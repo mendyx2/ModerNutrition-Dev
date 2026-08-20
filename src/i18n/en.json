@@ -1,0 +1,43 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "wallet": "My Wallet",
+    "team": "Binary Team",
+    "target": "My Next Target",
+    "orders": "My Orders",
+    "logout": "Log Out"
+  },
+  "welcome": {
+    "greeting": "Welcome back,",
+    "member_id": "Member ID:",
+    "country": "Country:",
+    "rank": "Current Rank:"
+  },
+  "commerce": {
+    "title": "Your Commerce This Month",
+    "subtitle": "Live monthly totals fetched directly from the Commerce Pool ledger",
+    "purchases": "Personal Purchases",
+    "pv": "Personal PV",
+    "gv": "Team GV",
+    "earnings": "Total Monthly Earnings"
+  },
+  "rewards": {
+    "title": "Five Reward Pools",
+    "subtitle": "Your active commission allocations from product purchases",
+    "member_purchase_reward": "Member Purchase Reward",
+    "member_purchase_reward_desc": "9% CV allocated back to registered product consumers on personal purchases.",
+    "distributor_performance": "Distributor Performance",
+    "distributor_performance_desc": "6% CV allocated to active product distributors driving retail volume.",
+    "leadership_development": "Leadership Development",
+    "leadership_development_desc": "9% CV allocated to leaders building active frontline organisations.",
+    "binary_team_bonus": "Binary Team Bonus",
+    "binary_team_bonus_desc": "8% CV allocated on balanced team volume across left and right legs.",
+    "matching_bonus": "Matching Bonus",
+    "matching_bonus_desc": "6% CV allocated on leadership duplication and downline earnings."
+  },
+  "balance": {
+    "title": "Total Available / Withdrawable Balance",
+    "subtitle": "Funds available for instant withdrawal or product purchase transfer",
+    "withdraw_btn": "Request Withdrawal"
+  }
+}

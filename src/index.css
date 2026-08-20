@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --forest-green: #01411C;
+  --forest-green-dark: #002510;
+  --harvest-gold: #D79A00;
+  --leaf-green: #8CCB52;
+  --charcoal: #222222;
+}
+
+body {
+  margin: 0;
+  background-color: #F8F9FA;
+  color: #222222;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Outfit', sans-serif;
+}
+
+/* Glassmorphism utility */
+.glass-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(1, 65, 28, 0.08);
+}

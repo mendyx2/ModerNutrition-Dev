@@ -1,0 +1,43 @@
+{
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "wallet": "Mon Portefeuille",
+    "team": "Équipe Binaire",
+    "target": "Mon Prochain Objectif",
+    "orders": "Mes Commandes",
+    "logout": "Déconnexion"
+  },
+  "welcome": {
+    "greeting": "Bienvenue,",
+    "member_id": "ID Membre:",
+    "country": "Pays:",
+    "rank": "Rang Actuel:"
+  },
+  "commerce": {
+    "title": "Votre Commerce Ce Mois-ci",
+    "subtitle": "Totaux mensuels en direct extraits du grand livre du Commerce Pool",
+    "purchases": "Achats Personnels",
+    "pv": "PV Personnels",
+    "gv": "GV d'Équipe",
+    "earnings": "Gains Mensuels Totaux"
+  },
+  "rewards": {
+    "title": "Les Cinq Pools de Récompense",
+    "subtitle": "Vos allocations de commission actives sur les achats de produits",
+    "member_purchase_reward": "Récompense d'Achat Membre",
+    "member_purchase_reward_desc": "9% CV attribué aux consommateurs enregistrés sur leurs achats personnels.",
+    "distributor_performance": "Performance de Distribution",
+    "distributor_performance_desc": "6% CV attribué aux distributeurs actifs générant du volume.",
+    "leadership_development": "Développement du Leadership",
+    "leadership_development_desc": "9% CV attribué aux leaders construisant des organisations actives.",
+    "binary_team_bonus": "Bonus d'Équipe Binaire",
+    "binary_team_bonus_desc": "8% CV attribué sur le volume d'équipe équilibré (jambes gauche/droite).",
+    "matching_bonus": "Bonus de Correspondance",
+    "matching_bonus_desc": "6% CV attribué sur la duplication du leadership et les gains des fiuels."
+  },
+  "balance": {
+    "title": "Solde Total Disponible / Retirable",
+    "subtitle": "Fonds disponibles pour un retrait instantané ou un achat de produit",
+    "withdraw_btn": "Demander un Retrait"
+  }
+}
