@@ -79,7 +79,8 @@ export default function MemberShop({ onBack }) {
       const matchSearch = !searchQuery ||
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.sku.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchCategory && matchSearch && p.status === 'active';
+      const isActive = !p.status || p.status === 'active';
+      return matchCategory && matchSearch && isActive;
     });
   }, [products, activeCategory, searchQuery]);
 
@@ -284,10 +285,18 @@ export default function MemberShop({ onBack }) {
                   className="bg-white rounded-2xl border border-forest-subtle shadow-xs hover:shadow-card hover:border-forest/30 transition-all flex flex-col overflow-hidden group"
                 >
                   {/* Product Image Area */}
-                  <div className="relative bg-gradient-to-br from-forest-subtle to-leaf-subtle h-36 sm:h-40 flex items-center justify-center">
-                    <div className="text-5xl opacity-80">
-                      {catConfig.emoji}
-                    </div>
+                  <div className="relative bg-gradient-to-br from-forest-subtle to-leaf-subtle h-36 sm:h-40 flex items-center justify-center p-2">
+                    {product.image_path ? (
+                      <img
+                        src={product.image_path.startsWith('/') ? product.image_path : (product.image_path.startsWith('http') || product.image_path.startsWith('data:') ? product.image_path : `/${product.image_path}`)}
+                        alt={product.name}
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="text-5xl opacity-80">
+                        {catConfig.emoji}
+                      </div>
+                    )}
 
                     {/* Category Badge */}
                     <span className={`absolute top-2.5 left-2.5 px-2 py-0.5 rounded-lg text-[10px] font-bold ${catConfig.color} border shadow-xs`}>
