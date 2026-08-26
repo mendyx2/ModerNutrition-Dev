@@ -140,9 +140,17 @@ export default function SideDrawer({
             className="p-4 bg-surface border-b border-gray-100 cursor-pointer hover:bg-gold/5 transition-colors group"
           >
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gold/20 border-2 border-gold flex items-center justify-center text-forest-dark font-extrabold text-base sm:text-lg flex-shrink-0 group-hover:scale-105 transition-transform">
-                {user?.first_name?.[0] || 'M'}
-              </div>
+              {user?.avatar || user?.avatar_path ? (
+                <img
+                  src={user?.avatar || user?.avatar_path}
+                  alt={user?.first_name}
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover border-2 border-gold flex-shrink-0 group-hover:scale-105 transition-transform shadow-xs"
+                />
+              ) : (
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gold/20 border-2 border-gold flex items-center justify-center text-forest-dark font-extrabold text-base sm:text-lg flex-shrink-0 group-hover:scale-105 transition-transform">
+                  {user?.first_name?.[0] || 'M'}
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-semibold text-muted leading-none mb-1">
                   {t('welcome.greeting')}

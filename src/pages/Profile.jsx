@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
@@ -7,12 +7,17 @@ import {
   ArrowLeft, MessageCircle, Send, Users, Sparkles, Mail,
   Phone, Calendar, GitMerge, Settings, Lock, LogOut,
   FileText, UploadCloud, MapPin, Building, IdCard, AlertCircle,
-  CheckCircle2, Clock
+  CheckCircle2, Clock, Camera, Trash2
 } from 'lucide-react';
 
 export default function Profile({ onBack }) {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const { i18n, t } = useTranslation();
+  const fileInputRef = useRef(null);
+
+  // Avatar state
+  const [avatarPreview, setAvatarPreview] = useState(user?.avatar || user?.avatar_path || null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   // Sponsor link state
   const [copied, setCopied] = useState(false);
@@ -40,6 +45,34 @@ export default function Profile({ onBack }) {
 
   const isKycComplete = Boolean(nationalId && address && phone);
 
+  // Handle Avatar Selection & Upload
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Please choose an image under 5MB.');
+        return;
+      }
+      setAvatarUploading(true);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result;
+        setAvatarPreview(dataUrl);
+        updateUser({ avatar: dataUrl });
+        setAvatarUploading(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarPreview(null);
+    updateUser({ avatar: null });
+    if (user?.id) {
+      localStorage.removeItem(`mn_avatar_${user.id}`);
+    }
+  };
+
   // Copy referral link
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink);
@@ -57,7 +90,7 @@ export default function Profile({ onBack }) {
     window.open(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(shareText)}`, '_blank');
   };
 
-  const handleFileUpload = (e) => {
+  const handleDocFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
       setUploadedFileName(file.name);
@@ -84,7 +117,6 @@ export default function Profile({ onBack }) {
       setKycSuccessMessage('KYC and Profile information updated successfully!');
       setTimeout(() => setKycSuccessMessage(''), 4000);
     } catch (err) {
-      // Local fallback success confirmation if offline
       setKycSuccessMessage('KYC and Profile information saved successfully!');
       setTimeout(() => setKycSuccessMessage(''), 4000);
     } finally {
@@ -117,9 +149,9 @@ export default function Profile({ onBack }) {
               <div>
                 <h1 className="font-heading font-extrabold text-sm sm:text-lg text-white leading-tight flex items-center space-x-2">
                   <User className="w-4 h-4 sm:w-5 sm:h-5 text-gold" />
-                  <span>My Profile & KYC Verification</span>
+                  <span>My Profile & Identity</span>
                 </h1>
-                <p className="text-[10px] text-gray-300 hidden sm:block">Identity verification, address & sponsor network management</p>
+                <p className="text-[10px] text-gray-300 hidden sm:block">Upload photo, identity verification & sponsor network management</p>
               </div>
             </div>
 
@@ -138,11 +170,40 @@ export default function Profile({ onBack }) {
       {/* ── Main Content Body ── */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6">
 
-        {/* ── Member Identity Hero Card ── */}
+        {/* ── Member Identity Hero Card with Avatar Upload ── */}
         <div className="bg-white rounded-3xl p-5 sm:p-8 border border-forest-subtle shadow-card flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6 text-center sm:text-left">
           
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-forest-dark text-gold border-4 border-gold/40 flex items-center justify-center font-extrabold text-3xl sm:text-4xl shadow-md flex-shrink-0">
-            {user?.first_name?.[0] || 'M'}
+          {/* Avatar with Camera Overlay */}
+          <div className="relative group flex-shrink-0">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={handleAvatarChange}
+              className="hidden"
+            />
+            
+            {avatarPreview ? (
+              <img
+                src={avatarPreview}
+                alt={user?.first_name}
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl object-cover border-4 border-gold shadow-md"
+              />
+            ) : (
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-forest-dark text-gold border-4 border-gold/40 flex items-center justify-center font-extrabold text-3xl sm:text-4xl shadow-md">
+                {user?.first_name?.[0] || 'M'}
+              </div>
+            )}
+
+            {/* Camera Upload Button Overlay */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute -bottom-1.5 -right-1.5 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gold hover:bg-gold-dark text-forest-dark flex items-center justify-center shadow-lg border-2 border-white transition-all active:scale-90"
+              title="Upload / Change Profile Photo"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
           </div>
 
           <div className="flex-1 min-w-0 space-y-2">
@@ -163,7 +224,29 @@ export default function Profile({ onBack }) {
               </span>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 text-xs text-muted">
+            {/* Avatar action links */}
+            <div className="flex items-center justify-center sm:justify-start space-x-3 text-xs">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-forest font-bold hover:underline flex items-center space-x-1"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>Change Photo</span>
+              </button>
+              {avatarPreview && (
+                <button
+                  type="button"
+                  onClick={handleRemoveAvatar}
+                  className="text-red-500 font-bold hover:underline flex items-center space-x-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Remove</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 text-xs text-muted pt-1">
               <div className="flex items-center space-x-1 font-mono font-bold text-forest-dark bg-surface px-2.5 py-1 rounded-lg border border-gray-200">
                 <span>ID:</span>
                 <span>{memberCode}</span>
@@ -316,7 +399,7 @@ export default function Profile({ onBack }) {
                 <input
                   type="file"
                   accept="image/*,.pdf"
-                  onChange={handleFileUpload}
+                  onChange={handleDocFileUpload}
                   className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                 />
                 <div className="space-y-1.5">

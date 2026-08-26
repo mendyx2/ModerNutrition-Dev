@@ -14,9 +14,17 @@ export const AuthProvider = ({ children }) => {
       const res = await api.post('/auth/login', { email, password });
       const { token: newToken, member, roles, permissions } = res.data;
       
+      const storedAvatar = localStorage.getItem(`mn_avatar_${member.id}`);
+      const fullUser = { 
+        ...member, 
+        avatar: storedAvatar || member.avatar_path || null,
+        roles, 
+        permissions 
+      };
+
       setAuthToken(newToken);
       setTokenState(newToken);
-      setUser({ ...member, roles, permissions });
+      setUser(fullUser);
       return { success: true };
     } catch (err) {
       return {
@@ -40,6 +48,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUser = (updatedFields) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...updatedFields };
+      if (updatedFields.avatar && prev.id) {
+        localStorage.setItem(`mn_avatar_${prev.id}`, updatedFields.avatar);
+      }
+      return updated;
+    });
+  };
+
   // Mock demonstration mode if no live backend is actively running
   const setDemoUser = (demoMemberData) => {
     setAuthToken('demo-token-12345');
@@ -48,12 +67,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    // No hardcoded user — real auth via login() or demo via setDemoUser()
     setLoading(false);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, setDemoUser, loading }}>
+    <AuthContext.Provider value={{ token, user, login, logout, updateUser, setDemoUser, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -179,9 +179,17 @@ export default function Header({
             className="flex items-center space-x-2.5 sm:space-x-3 cursor-pointer"
             onClick={onNavigateToProfile}
           >
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gold/20 border border-gold flex items-center justify-center text-gold font-extrabold text-sm sm:text-lg flex-shrink-0">
-              {user?.first_name?.[0] || 'M'}
-            </div>
+            {user?.avatar || user?.avatar_path ? (
+              <img
+                src={user?.avatar || user?.avatar_path}
+                alt={user?.first_name}
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-gold flex-shrink-0 shadow-xs"
+              />
+            ) : (
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gold/20 border border-gold flex items-center justify-center text-gold font-extrabold text-sm sm:text-lg flex-shrink-0">
+                {user?.first_name?.[0] || 'M'}
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <div className="text-[10px] sm:text-xs text-gray-300 font-semibold leading-none mb-0.5">{t('welcome.greeting')}</div>
               <h1 className="text-sm sm:text-lg font-extrabold text-white flex items-center space-x-1.5 truncate">
