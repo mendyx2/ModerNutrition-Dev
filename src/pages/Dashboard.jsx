@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 
-export default function Dashboard() {
+export default function Dashboard({ onNavigateToShop }) {
   const { user } = useAuth();
   const [sideDrawerOpen, setSideDrawerOpen] = useState(false);
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
@@ -83,6 +83,7 @@ export default function Dashboard() {
         onOpenDrawer={() => setSideDrawerOpen(true)}
         onOpenOrders={() => setOrdersModalOpen(true)}
         onOpenInvite={() => setInviteModalOpen(true)}
+        onNavigateToShop={onNavigateToShop}
       />
 
       {/* ── Right-Side Slide-Over Navigation Drawer ── */}
@@ -91,6 +92,7 @@ export default function Dashboard() {
         onClose={() => setSideDrawerOpen(false)}
         onOpenOrders={() => setOrdersModalOpen(true)}
         onOpenInvite={() => setInviteModalOpen(true)}
+        onNavigateToShop={onNavigateToShop}
       />
 
       {/* ── Main Content Body ── */}

@@ -6,7 +6,7 @@ import {
   ExternalLink, LogOut, Globe, Award, ShieldCheck, User, ChevronRight
 } from 'lucide-react';
 
-export default function SideDrawer({ isOpen, onClose, onOpenOrders, onOpenInvite }) {
+export default function SideDrawer({ isOpen, onClose, onOpenOrders, onOpenInvite, onNavigateToShop }) {
   const { user, logout } = useAuth();
   const { i18n, t } = useTranslation();
 
@@ -37,8 +37,10 @@ export default function SideDrawer({ isOpen, onClose, onOpenOrders, onOpenInvite
       label: 'Shop Products',
       desc: 'Browse & purchase VitaSeries™',
       icon: ShoppingBag,
-      href: publicShopUrl,
-      external: true,
+      onClick: () => {
+        onClose();
+        if (onNavigateToShop) onNavigateToShop();
+      },
     },
     {
       id: 'orders',

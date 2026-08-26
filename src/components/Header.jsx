@@ -7,7 +7,7 @@ import {
   ExternalLink, Share2, Menu
 } from 'lucide-react';
 
-export default function Header({ onOpenDrawer, onOpenOrders, onOpenInvite }) {
+export default function Header({ onOpenDrawer, onOpenOrders, onOpenInvite, onNavigateToShop }) {
   const { user, logout } = useAuth();
   const { i18n, t } = useTranslation();
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -35,8 +35,10 @@ export default function Header({ onOpenDrawer, onOpenOrders, onOpenInvite }) {
       id: 'shop',
       label: 'Shop Products',
       icon: ShoppingBag,
-      href: publicShopUrl,
-      external: true,
+      onClick: () => {
+        setActiveTab('shop');
+        if (onNavigateToShop) onNavigateToShop();
+      },
     },
     {
       id: 'orders',

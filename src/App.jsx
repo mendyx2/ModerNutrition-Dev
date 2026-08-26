@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Dashboard from './pages/Dashboard';
+import MemberShop from './pages/MemberShop';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import './i18n/i18n';
@@ -23,6 +24,7 @@ function AppRouter() {
     const path = window.location.pathname;
     if (path.includes('register')) return 'register';
     if (path.includes('login')) return 'login';
+    if (path.includes('shop')) return 'shop';
     return 'dashboard';
   };
 
@@ -36,32 +38,26 @@ function AppRouter() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // ── Navigation helper ──
+  const navigateTo = (view, path) => {
+    window.history.pushState({}, '', path);
+    setCurrentView(view);
+  };
+
   if (currentView === 'register') {
     return (
       <Register
-        onNavigateToLogin={() => {
-          window.history.pushState({}, '', '/login');
-          setCurrentView('login');
-        }}
-        onRegistered={() => {
-          window.history.pushState({}, '', '/');
-          setCurrentView('dashboard');
-        }}
+        onNavigateToLogin={() => navigateTo('login', '/login')}
+        onRegistered={() => navigateTo('dashboard', '/')}
       />
     );
   }
 
-  if (currentView === 'login' || (!user && currentView === 'dashboard')) {
+  if (currentView === 'login' || (!user && currentView === 'dashboard') || (!user && currentView === 'shop')) {
     return (
       <Login
-        onNavigateToRegister={() => {
-          window.history.pushState({}, '', '/register');
-          setCurrentView('register');
-        }}
-        onLoggedIn={() => {
-          window.history.pushState({}, '', '/');
-          setCurrentView('dashboard');
-        }}
+        onNavigateToRegister={() => navigateTo('register', '/register')}
+        onLoggedIn={() => navigateTo('dashboard', '/')}
       />
     );
   }
@@ -70,19 +66,26 @@ function AppRouter() {
   if (!user) {
     return (
       <Login
-        onNavigateToRegister={() => {
-          window.history.pushState({}, '', '/register');
-          setCurrentView('register');
-        }}
-        onLoggedIn={() => {
-          window.history.pushState({}, '', '/');
-          setCurrentView('dashboard');
-        }}
+        onNavigateToRegister={() => navigateTo('register', '/register')}
+        onLoggedIn={() => navigateTo('dashboard', '/')}
       />
     );
   }
 
-  return <Dashboard />;
+  // ── Authenticated Views ──
+  if (currentView === 'shop') {
+    return (
+      <MemberShop
+        onBack={() => navigateTo('dashboard', '/')}
+      />
+    );
+  }
+
+  return (
+    <Dashboard
+      onNavigateToShop={() => navigateTo('shop', '/shop')}
+    />
+  );
 }
 
 export default function App() {
