@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next';
 import {
   User, Award, Globe, LogOut, ShieldCheck,
   LayoutDashboard, ShoppingBag, ClipboardList, Wallet, Users, UserPlus,
-  ExternalLink, Share2
+  ExternalLink, Share2, Menu
 } from 'lucide-react';
 
-export default function Header({ onOpenOrders, onOpenInvite }) {
+export default function Header({ onOpenDrawer, onOpenOrders, onOpenInvite }) {
   const { user, logout } = useAuth();
   const { i18n, t } = useTranslation();
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -81,29 +81,44 @@ export default function Header({ onOpenOrders, onOpenInvite }) {
   return (
     <header className="bg-forest-dark text-white border-b-2 sm:border-b-4 border-gold sticky top-0 z-40 shadow-lg">
       
-      {/* ── Top Bar: Logo, Desktop Menu & Quick Mobile Actions ── */}
+      {/* ── Top Bar: Logo, Menu & Account Actions ── */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-20">
           
-          {/* Logo & Brand */}
-          <div className="flex items-center space-x-2.5 sm:space-x-3">
-            <img 
-              src="/assets/logo_header_landing_page.png" 
-              alt="ModerNutrition" 
-              className="h-8 w-8 sm:h-10 sm:w-10 object-contain rounded-lg border border-gold bg-white p-0.5 shadow-xs" 
-            />
-            <div>
-              <span className="font-heading font-extrabold text-sm sm:text-base tracking-wide text-white block leading-tight">
-                Moder<span className="text-gold">N</span>utrition
-              </span>
-              <span className="bg-gold text-forest-dark text-[9px] sm:text-[10px] font-extrabold px-1.5 sm:px-2 py-0.2 rounded-full uppercase tracking-wider hidden xs:inline-block">
-                Member Portal
-              </span>
+          {/* Left: Hamburger Drawer Toggle + Logo */}
+          <div className="flex items-center space-x-2.5 sm:space-x-4">
+            
+            {/* Hamburger Button that opens the Side Drawer */}
+            <button
+              onClick={onOpenDrawer}
+              className="p-2 sm:p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center justify-center border border-white/10 active:scale-95"
+              aria-label="Open Navigation Menu"
+              title="Menu"
+            >
+              <Menu className="w-5 h-5 text-gold" />
+            </button>
+
+            {/* Logo & Brand */}
+            <div className="flex items-center space-x-2 sm:space-x-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+              <img 
+                src="/assets/logo_header_landing_page.png" 
+                alt="ModerNutrition" 
+                className="h-8 w-8 sm:h-10 sm:w-10 object-contain rounded-lg border border-gold bg-white p-0.5 shadow-xs" 
+              />
+              <div>
+                <span className="font-heading font-extrabold text-sm sm:text-base tracking-wide text-white block leading-tight">
+                  Moder<span className="text-gold">N</span>utrition
+                </span>
+                <span className="bg-gold text-forest-dark text-[9px] sm:text-[10px] font-extrabold px-1.5 sm:px-2 py-0.2 rounded-full uppercase tracking-wider hidden xs:inline-block">
+                  Member Portal
+                </span>
+              </div>
             </div>
+
           </div>
 
           {/* ── Desktop Navigation Menu Bar ── */}
-          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2 bg-white/5 p-1.5 rounded-2xl border border-white/10">
+          <nav className="hidden lg:flex items-center space-x-1 bg-white/5 p-1.5 rounded-2xl border border-white/10">
             {menuItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -154,13 +169,13 @@ export default function Header({ onOpenOrders, onOpenInvite }) {
             })}
           </nav>
 
-          {/* User Identity & Lang Actions */}
-          <div className="flex items-center space-x-2 sm:space-x-4">
+          {/* Right Actions: Invite Button, Language, Profile & Logout */}
+          <div className="flex items-center space-x-2 sm:space-x-3">
             
-            {/* Quick Mobile Invite Button */}
+            {/* Quick Invite Button */}
             <button
               onClick={onOpenInvite}
-              className="md:hidden flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-gold text-forest-dark font-extrabold text-[11px] shadow-sm active:scale-95 transition-transform"
+              className="flex items-center space-x-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-gold text-forest-dark font-extrabold text-[11px] sm:text-xs shadow-sm hover:bg-gold-dark active:scale-95 transition-all"
               title="Share Referral Link"
             >
               <Share2 className="w-3.5 h-3.5" />
@@ -171,7 +186,7 @@ export default function Header({ onOpenOrders, onOpenInvite }) {
             <select
               value={i18n.language}
               onChange={(e) => changeLanguage(e.target.value)}
-              className="bg-forest-light text-white text-[11px] sm:text-xs font-bold px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-full border border-white/20 outline-none cursor-pointer hover:border-gold transition-colors"
+              className="bg-forest-light text-white text-[11px] sm:text-xs font-bold px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl border border-white/20 outline-none cursor-pointer hover:border-gold transition-colors"
             >
               <option value="en">EN 🇬🇧</option>
               <option value="fr">FR 🇨🇩</option>
@@ -180,11 +195,11 @@ export default function Header({ onOpenOrders, onOpenInvite }) {
             {/* Logout Button */}
             <button
               onClick={logout}
-              className="flex items-center space-x-1 text-[11px] sm:text-xs font-bold text-gray-300 hover:text-gold transition-colors p-1"
+              className="hidden sm:flex items-center space-x-1 text-xs font-bold text-gray-300 hover:text-gold transition-colors p-1.5 rounded-lg hover:bg-white/5"
               title="Logout"
             >
               <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('nav.logout')}</span>
+              <span className="hidden md:inline">{t('nav.logout')}</span>
             </button>
 
           </div>
@@ -210,7 +225,7 @@ export default function Header({ onOpenOrders, onOpenInvite }) {
             </div>
           </div>
 
-          {/* Member Identity Pills (Horizontal scroll on very small screens) */}
+          {/* Member Identity Pills */}
           <div className="flex items-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs overflow-x-auto pb-0.5 no-scrollbar">
             
             {/* Member ID */}

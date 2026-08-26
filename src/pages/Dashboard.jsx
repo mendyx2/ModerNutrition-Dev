@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
+import SideDrawer from '../components/SideDrawer';
 import BottomNav from '../components/BottomNav';
 import CommerceThisMonth from '../components/CommerceThisMonth';
 import FiveRewardCards from '../components/FiveRewardCards';
@@ -15,6 +16,7 @@ import api from '../services/api';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [sideDrawerOpen, setSideDrawerOpen] = useState(false);
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
   const [ordersModalOpen, setOrdersModalOpen] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
@@ -77,13 +79,22 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-surface flex flex-col antialiased selection:bg-gold selection:text-forest-dark">
 
-      {/* ── 1. Compact Mobile-First Header ── */}
+      {/* ── 1. Compact Header with Drawer Hamburger Trigger ── */}
       <Header
+        onOpenDrawer={() => setSideDrawerOpen(true)}
         onOpenOrders={() => setOrdersModalOpen(true)}
         onOpenInvite={() => setInviteModalOpen(true)}
       />
 
-      {/* ── Main Content Body with Safe Bottom Padding for Mobile Nav ── */}
+      {/* ── Side Navigation Slide-Over Drawer ── */}
+      <SideDrawer
+        isOpen={sideDrawerOpen}
+        onClose={() => setSideDrawerOpen(false)}
+        onOpenOrders={() => setOrdersModalOpen(true)}
+        onOpenInvite={() => setInviteModalOpen(true)}
+      />
+
+      {/* ── Main Content Body with Safe Bottom Padding for Mobile ── */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6 sm:space-y-8 pb-28 md:pb-12">
 
         {/* ── 2. Your Commerce This Month ── */}
@@ -114,7 +125,7 @@ export default function Dashboard() {
 
       </main>
 
-      {/* ── Native Sticky Mobile Bottom Navigation Bar ── */}
+      {/* ── Sticky Mobile Bottom Navigation Bar ── */}
       <BottomNav
         onOpenOrders={() => setOrdersModalOpen(true)}
         onOpenInvite={() => setInviteModalOpen(true)}
