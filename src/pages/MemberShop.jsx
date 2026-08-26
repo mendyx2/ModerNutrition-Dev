@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
   ShoppingBag, Plus, Minus, ShoppingCart, Search, Filter, X,
   Star, Zap, ChevronDown, Package, ArrowLeft, Check, Truck,
-  Award, Percent, BadgeCheck
+  Award, Percent, BadgeCheck, CreditCard, Smartphone, Building
 } from 'lucide-react';
 
 // ── Fallback product data when API is unavailable ──
@@ -15,25 +15,25 @@ const FALLBACK_PRODUCTS = [
     id: 1, sku: 'VITA-ACT-001', name: 'VitaActive™ Complete Meal Cereal',
     description: 'Rich in essential micro-nutrients, plant proteins, and digestive enzymes. Formulated to sustain high energy, promote lean muscle, and support holistic daily vitality.',
     category: 'Cereals', currency: 'USD', price_cents: 4500, pv: 35.00, cv: 30.00,
-    available_countries: ['COD'], status: 'active', image_path: null,
+    available_countries: ['COD'], status: 'active', image_path: '/assets/products/protein-mix.png',
   },
   {
     id: 2, sku: 'VITA-GLD-002', name: 'VitaGold™ Fortified Swallow Mix',
     description: 'Engineered to blend effortlessly with Fufu, Chikwangue, and traditional starch swallows. Enriched with Iron, Zinc, Vitamin A, and Essential B-Complex.',
     category: 'Swallows', currency: 'USD', price_cents: 3800, pv: 28.00, cv: 25.00,
-    available_countries: ['COD'], status: 'active', image_path: null,
+    available_countries: ['COD'], status: 'active', image_path: '/assets/products/family-nutrition.png',
   },
   {
     id: 3, sku: 'WELL-GRN-003', name: 'Daily Greens Vitality Elixir',
     description: 'Organic Moringa, Spirulina, and Baobab extract for daily cellular rejuvenation and natural vitality. Refreshing botanical blend.',
     category: 'Beverages', currency: 'USD', price_cents: 3000, pv: 22.00, cv: 20.00,
-    available_countries: ['COD'], status: 'active', image_path: null,
+    available_countries: ['COD'], status: 'active', image_path: '/assets/products/daily-greens.png',
   },
   {
     id: 4, sku: 'SNK-CRN-004', name: 'VitaCrunch™ Nutri-Bites',
     description: 'Delicious crunchy roasted soy and grain clusters fortified with Zinc, B-Vitamins, and healthy prebiotic fiber. Perfect guilt-free nutrition on the go.',
     category: 'Snacks', currency: 'USD', price_cents: 2500, pv: 18.00, cv: 15.00,
-    available_countries: ['COD'], status: 'active', image_path: null,
+    available_countries: ['COD'], status: 'active', image_path: '/assets/products/vitamin-pack.png',
   },
 ];
 
@@ -45,22 +45,31 @@ const CATEGORY_CONFIG = {
   Snacks: { emoji: '🍿', color: 'bg-purple-100 text-purple-800 border-purple-300' },
 };
 
+const PAYMENT_METHODS = [
+  { id: 'airtel_money', name: 'Airtel Money (DRC)', icon: Smartphone },
+  { id: 'orange_money', name: 'Orange Money (DRC)', icon: Smartphone },
+  { id: 'mpesa', name: 'M-Pesa (Vodacom DRC)', icon: Smartphone },
+  { id: 'cash_delivery', name: 'Cash on Pickup / Store', icon: Building },
+];
+
 export default function MemberShop({ onBack }) {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [cart, setCart] = useState({});
   const [cartOpen, setCartOpen] = useState(false);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('airtel_money');
+  const [shippingAddress, setShippingAddress] = useState(user?.address || 'Kinshasa, DRC');
 
-  // Fetch products from authenticated member endpoint (fallback to public)
+  // Fetch products from public/member catalogue
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['memberProducts'],
     queryFn: async () => {
       try {
-        // Try authenticated endpoint first
         const res = await api.get('/public/products');
         const data = res.data?.data || res.data;
         return Array.isArray(data) ? data : FALLBACK_PRODUCTS;
@@ -124,16 +133,28 @@ export default function MemberShop({ onBack }) {
       const payload = {
         items: cartItems.map(item => ({
           product_id: item.product.id,
+          sku: item.product.sku,
           quantity: item.qty,
         })),
-        payment_method: 'mobile_money',
+        payment_method: paymentMethod,
+        shipping_address: shippingAddress,
       };
+
       const res = await api.post('/member/orders', payload);
-      setOrderSuccess(res.data);
+      const createdOrder = res.data?.order || res.data;
+      
+      // Invalidate queries so orders and wallets update immediately
+      queryClient.invalidateQueries({ queryKey: ['memberOrdersPage'] });
+      queryClient.invalidateQueries({ queryKey: ['memberWalletsFull'] });
+      queryClient.invalidateQueries({ queryKey: ['memberTransactionsFull'] });
+      queryClient.invalidateQueries({ queryKey: ['memberDashboardSummary'] });
+
+      setOrderSuccess(createdOrder);
       clearCart();
       setCartOpen(false);
     } catch (err) {
-      const msg = err.response?.data?.message || 'Order submission failed. Please try again.';
+      console.error('Order submission error:', err);
+      const msg = err.response?.data?.message || err.message || 'Order submission failed. Please check your network or try again.';
       alert(msg);
     } finally {
       setOrderSubmitting(false);
@@ -141,7 +162,7 @@ export default function MemberShop({ onBack }) {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col antialiased">
+    <div className="min-h-screen bg-surface flex flex-col antialiased pb-12">
 
       {/* ── Shop Header ── */}
       <header className="bg-forest-dark text-white border-b-2 border-gold sticky top-0 z-40 shadow-lg">
@@ -152,7 +173,7 @@ export default function MemberShop({ onBack }) {
             <div className="flex items-center space-x-3">
               <button
                 onClick={onBack}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors active:scale-95"
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors active:scale-95 cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gold" />
               </button>
@@ -168,12 +189,12 @@ export default function MemberShop({ onBack }) {
             {/* Cart Button */}
             <button
               onClick={() => setCartOpen(true)}
-              className="relative flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-xl bg-gold text-forest-dark font-extrabold text-xs sm:text-sm shadow hover:bg-gold-dark active:scale-95 transition-all"
+              className="relative flex items-center space-x-2 bg-gold hover:bg-gold-light text-forest-dark font-extrabold text-xs sm:text-sm px-3.5 py-2 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
             >
               <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="hidden sm:inline">Cart</span>
               {cartCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-red-500 text-white text-[10px] sm:text-xs font-bold flex items-center justify-center border-2 border-forest-dark animate-bounce">
+                <span className="bg-forest-dark text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
                   {cartCount}
                 </span>
               )}
@@ -182,22 +203,16 @@ export default function MemberShop({ onBack }) {
           </div>
         </div>
 
-        {/* ── Member Benefit Banner ── */}
-        <div className="bg-gold/15 border-t border-gold/30 py-2 px-3 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto flex items-center justify-center gap-3 sm:gap-6 text-[10px] sm:text-xs text-gold font-bold">
-            <span className="flex items-center space-x-1">
-              <Percent className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+        {/* Reward Highlight Strip */}
+        <div className="bg-forest-dark/95 border-t border-white/10 py-1.5 px-3 sm:px-6">
+          <div className="max-w-7xl mx-auto flex items-center justify-between text-[11px] sm:text-xs">
+            <span className="text-gold flex items-center space-x-1 font-bold">
+              <Percent className="w-3.5 h-3.5" />
               <span>9% Purchase Reward</span>
             </span>
-            <span className="w-1 h-1 rounded-full bg-gold/40" />
-            <span className="flex items-center space-x-1">
-              <Award className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <span className="text-gray-300 flex items-center space-x-1">
+              <Award className="w-3.5 h-3.5 text-gold" />
               <span>Earn PV & CV Points</span>
-            </span>
-            <span className="w-1 h-1 rounded-full bg-gold/40 hidden sm:block" />
-            <span className="hidden sm:flex items-center space-x-1">
-              <BadgeCheck className="w-3.5 h-3.5" />
-              <span>Member Exclusive Pricing</span>
             </span>
           </div>
         </div>
@@ -339,37 +354,41 @@ export default function MemberShop({ onBack }) {
                       </span>
                     </div>
 
-                    {/* Price & Add to Cart */}
-                    <div className="flex items-center justify-between">
+                    {/* Price + Action */}
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                       <div>
-                        <span className="text-lg font-extrabold text-forest-dark">${price}</span>
-                        <span className="text-[10px] text-muted ml-1 font-medium">{product.currency}</span>
+                        <span className="text-xs text-muted">Member Price</span>
+                        <div className="text-base sm:text-lg font-extrabold text-forest-dark font-mono">
+                          ${price}
+                        </div>
                       </div>
 
-                      {inCart > 0 ? (
-                        <div className="flex items-center space-x-1.5">
-                          <button
-                            onClick={() => removeFromCart(product.id)}
-                            className="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center border border-red-200 transition-colors active:scale-90"
-                          >
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-                          <span className="w-7 text-center text-sm font-extrabold text-forest-dark">{inCart}</span>
-                          <button
-                            onClick={() => addToCart(product)}
-                            className="w-8 h-8 rounded-lg bg-forest hover:bg-forest-dark text-white flex items-center justify-center border border-forest transition-colors active:scale-90"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ) : (
+                      {inCart === 0 ? (
                         <button
                           onClick={() => addToCart(product)}
-                          className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-forest text-white font-bold text-xs hover:bg-forest-dark shadow-xs transition-all active:scale-95"
+                          className="flex items-center space-x-1 px-3 py-2 rounded-xl bg-forest text-white text-xs font-extrabold hover:bg-forest-dark transition-all active:scale-95 shadow-xs cursor-pointer"
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          <span>Add</span>
+                          <span>Add to Cart</span>
                         </button>
+                      ) : (
+                        <div className="flex items-center space-x-1.5 bg-forest-subtle rounded-xl p-1 border border-forest/20">
+                          <button
+                            onClick={() => removeFromCart(product.id)}
+                            className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-forest-dark font-bold text-xs shadow-xs hover:bg-forest hover:text-white transition-colors cursor-pointer"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-6 text-center text-xs font-extrabold text-forest-dark">
+                            {inCart}
+                          </span>
+                          <button
+                            onClick={() => addToCart(product)}
+                            className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-forest-dark font-bold text-xs shadow-xs hover:bg-forest hover:text-white transition-colors cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -380,93 +399,118 @@ export default function MemberShop({ onBack }) {
         )}
       </main>
 
-      {/* ── Floating Cart Summary (visible when cart has items) ── */}
-      {cartCount > 0 && !cartOpen && (
-        <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:max-w-sm z-30">
-          <button
-            onClick={() => setCartOpen(true)}
-            className="w-full flex items-center justify-between bg-forest-dark text-white rounded-2xl px-5 py-3.5 shadow-2xl border-2 border-gold/60 hover:border-gold transition-all active:scale-98"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <ShoppingCart className="w-5 h-5 text-gold" />
-                <span className="absolute -top-1.5 -right-2 w-4 h-4 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center">
-                  {cartCount}
-                </span>
-              </div>
-              <div className="text-left">
-                <div className="text-xs font-extrabold">View Cart &bull; {cartCount} item{cartCount > 1 ? 's' : ''}</div>
-                <div className="text-[10px] text-gold font-bold">+{cartTotalPV.toFixed(0)} PV &bull; +{cartTotalCV.toFixed(0)} CV</div>
-              </div>
-            </div>
-            <span className="text-base font-extrabold">${(cartTotalCents / 100).toFixed(2)}</span>
-          </button>
-        </div>
-      )}
-
-      {/* ── Cart Drawer (Right Side Bottom Sheet) ── */}
+      {/* ── Cart Drawer ── */}
       {cartOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full border border-forest-subtle shadow-2xl overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
-
-            {/* Mobile Pull Handle */}
-            <div className="sm:hidden pt-2.5 pb-1 flex justify-center bg-forest-dark">
-              <div className="w-10 h-1 rounded-full bg-white/30" />
-            </div>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-end">
+          <div className="bg-white w-full max-w-md h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
 
             {/* Cart Header */}
-            <div className="bg-forest-dark text-white p-4 sm:p-5 flex items-center justify-between border-b-2 border-gold">
-              <div className="flex items-center space-x-2.5">
+            <div className="bg-forest-dark text-white p-4 flex items-center justify-between border-b-2 border-gold">
+              <div className="flex items-center space-x-2">
                 <ShoppingCart className="w-5 h-5 text-gold" />
-                <div>
-                  <h3 className="text-sm sm:text-base font-extrabold font-heading">Your Cart</h3>
-                  <p className="text-[10px] text-gray-300">{cartCount} item{cartCount > 1 ? 's' : ''} &bull; Member Order</p>
-                </div>
+                <h2 className="font-heading font-extrabold text-base text-white">Member Cart ({cartCount})</h2>
               </div>
               <button
                 onClick={() => setCartOpen(false)}
-                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-gray-300 hover:text-white transition-colors"
+                className="p-1 rounded-lg hover:bg-white/10 transition-colors text-white"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Cart Items */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-surface">
+            {/* Cart Items List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {cartItems.length === 0 ? (
-                <div className="py-10 text-center text-xs text-muted">
-                  Your cart is empty. Add products to get started!
+                <div className="py-16 text-center space-y-3">
+                  <ShoppingBag className="w-12 h-12 text-muted mx-auto" />
+                  <p className="text-sm font-bold text-forest-dark">Your cart is empty</p>
+                  <p className="text-xs text-muted">Add some products to earn PV & CV points!</p>
                 </div>
               ) : (
                 <>
                   {cartItems.map(({ product, qty }) => (
-                    <div key={product.id} className="bg-white rounded-xl p-3.5 border border-forest-subtle shadow-xs flex items-start space-x-3">
-                      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-forest-subtle to-leaf-subtle flex items-center justify-center text-2xl flex-shrink-0">
-                        {(CATEGORY_CONFIG[product.category] || { emoji: '📦' }).emoji}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-xs font-bold text-forest-dark truncate">{product.name}</h4>
-                        <div className="text-[10px] text-muted">${(product.price_cents / 100).toFixed(2)} × {qty}</div>
-                        <div className="text-[10px] text-forest font-bold mt-0.5">
-                          +{(product.pv * qty).toFixed(0)} PV &bull; +{(product.cv * qty).toFixed(0)} CV
+                    <div
+                      key={product.id}
+                      className="bg-surface rounded-xl p-3 border border-forest-subtle flex items-center justify-between"
+                    >
+                      <div className="flex-1 min-w-0 pr-3">
+                        <h4 className="text-xs font-extrabold text-forest-dark truncate">{product.name}</h4>
+                        <span className="text-[10px] text-muted font-mono">{product.sku}</span>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span className="text-xs font-extrabold text-forest-dark font-mono">
+                            ${((product.price_cents * qty) / 100).toFixed(2)}
+                          </span>
+                          <span className="text-[10px] text-gold-dark font-bold">
+                            +{(product.pv * qty).toFixed(1)} PV
+                          </span>
+                          <span className="text-[10px] text-leaf font-bold">
+                            +{(product.cv * qty).toFixed(1)} CV
+                          </span>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-1.5 flex-shrink-0">
-                        <button onClick={() => removeFromCart(product.id)} className="w-7 h-7 rounded-lg bg-red-50 text-red-600 flex items-center justify-center border border-red-200 active:scale-90">
+
+                      {/* Qty Controls */}
+                      <div className="flex items-center space-x-1.5">
+                        <button
+                          onClick={() => removeFromCart(product.id)}
+                          className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-forest-dark font-bold text-xs hover:bg-forest hover:text-white transition-colors cursor-pointer"
+                        >
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="w-5 text-center text-xs font-extrabold text-forest-dark">{qty}</span>
-                        <button onClick={() => addToCart(product)} className="w-7 h-7 rounded-lg bg-forest text-white flex items-center justify-center active:scale-90">
+                        <span className="w-6 text-center text-xs font-extrabold text-forest-dark">{qty}</span>
+                        <button
+                          onClick={() => addToCart(product)}
+                          className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-forest-dark font-bold text-xs hover:bg-forest hover:text-white transition-colors cursor-pointer"
+                        >
                           <Plus className="w-3 h-3" />
                         </button>
-                      </div>
-                      <div className="text-xs font-extrabold text-forest-dark flex-shrink-0 ml-1">
-                        ${(product.price_cents * qty / 100).toFixed(2)}
                       </div>
                     </div>
                   ))}
 
-                  {/* Cart Totals */}
+                  {/* Payment Method Selector */}
+                  <div className="bg-surface rounded-xl p-3 border border-forest-subtle space-y-2 mt-3">
+                    <label className="block text-xs font-extrabold text-forest-dark">
+                      Select Payment Method
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {PAYMENT_METHODS.map((pm) => {
+                        const Icon = pm.icon;
+                        const isSel = paymentMethod === pm.id;
+                        return (
+                          <button
+                            key={pm.id}
+                            type="button"
+                            onClick={() => setPaymentMethod(pm.id)}
+                            className={`p-2.5 rounded-xl border text-left flex items-center space-x-2 transition-all cursor-pointer ${
+                              isSel
+                                ? 'border-forest bg-forest text-white shadow-xs'
+                                : 'border-gray-200 bg-white text-forest-dark hover:border-forest/40'
+                            }`}
+                          >
+                            <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="text-[11px] font-bold leading-tight truncate">{pm.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Delivery Address Input */}
+                  <div className="bg-surface rounded-xl p-3 border border-forest-subtle space-y-1.5">
+                    <label className="block text-xs font-extrabold text-forest-dark">
+                      Delivery / Pickup Address
+                    </label>
+                    <input
+                      type="text"
+                      value={shippingAddress}
+                      onChange={(e) => setShippingAddress(e.target.value)}
+                      placeholder="e.g. Kinshasa, Gombe / Pickup Station"
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-medium text-forest-dark focus:ring-1 focus:ring-forest outline-none"
+                    />
+                  </div>
+
+                  {/* Cart Totals Summary */}
                   <div className="bg-white rounded-xl p-4 border border-forest-subtle shadow-xs space-y-2.5 mt-2">
                     <div className="flex justify-between text-xs">
                       <span className="text-muted">Subtotal</span>
@@ -503,10 +547,10 @@ export default function MemberShop({ onBack }) {
                   <button
                     onClick={submitOrder}
                     disabled={orderSubmitting}
-                    className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-forest text-white font-extrabold text-sm shadow-md hover:bg-forest-dark transition-all active:scale-98 disabled:opacity-50"
+                    className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-forest text-white font-extrabold text-sm shadow-md hover:bg-forest-dark transition-all active:scale-98 disabled:opacity-50 cursor-pointer"
                   >
                     {orderSubmitting ? (
-                      <span>Processing...</span>
+                      <span>Placing Order on Server...</span>
                     ) : (
                       <>
                         <Check className="w-4 h-4" />
@@ -516,7 +560,7 @@ export default function MemberShop({ onBack }) {
                   </button>
                   <button
                     onClick={clearCart}
-                    className="w-full py-2 text-xs font-bold text-gray-500 hover:text-red-600 transition-colors"
+                    className="w-full py-2 text-xs font-bold text-gray-500 hover:text-red-600 transition-colors cursor-pointer"
                   >
                     Clear Cart
                   </button>
@@ -524,7 +568,7 @@ export default function MemberShop({ onBack }) {
               )}
               <button
                 onClick={() => setCartOpen(false)}
-                className="w-full py-2 text-xs font-bold text-forest hover:text-forest-dark transition-colors"
+                className="w-full py-2 text-xs font-bold text-forest hover:text-forest-dark transition-colors cursor-pointer"
               >
                 Continue Shopping
               </button>
@@ -543,32 +587,39 @@ export default function MemberShop({ onBack }) {
             </div>
             <h3 className="text-lg font-extrabold text-forest-dark font-heading">Order Placed Successfully!</h3>
             <p className="text-xs text-muted leading-relaxed">
-              Your member order has been submitted and your PV/CV points have been credited.
-              The 9% Purchase Reward will be allocated to your wallet.
+              Your order has been recorded in the platform ledger. The 10-tier allocation and 9% Member Purchase Reward have been computed.
             </p>
             {orderSuccess?.order_number && (
-              <div className="bg-forest-subtle px-4 py-2 rounded-xl inline-block">
+              <div className="bg-forest-subtle px-4 py-2.5 rounded-xl inline-block border border-forest/20">
                 <span className="text-xs font-mono font-bold text-forest-dark">{orderSuccess.order_number}</span>
+                <span className="block text-[10px] text-muted capitalize mt-0.5">Status: {orderSuccess.status || 'Paid'}</span>
               </div>
             )}
-            <button
-              onClick={() => setOrderSuccess(null)}
-              className="w-full py-3 rounded-xl bg-forest text-white font-extrabold text-sm hover:bg-forest-dark transition-all shadow-md"
-            >
-              Continue Shopping
-            </button>
-            <button
-              onClick={() => { setOrderSuccess(null); onBack(); }}
-              className="text-xs text-forest font-bold hover:text-forest-dark"
-            >
-              ← Back to Dashboard
-            </button>
+            
+            <div className="space-y-2 pt-2">
+              <button
+                onClick={() => {
+                  setOrderSuccess(null);
+                  window.history.pushState({}, '', '/orders');
+                  window.location.pathname = '/orders';
+                }}
+                className="w-full py-3 rounded-xl bg-forest text-white font-extrabold text-xs sm:text-sm hover:bg-forest-dark transition-all shadow-md cursor-pointer"
+              >
+                View in My Orders
+              </button>
+              <button
+                onClick={() => setOrderSuccess(null)}
+                className="w-full py-2.5 rounded-xl bg-gray-100 text-forest-dark font-bold text-xs hover:bg-gray-200 transition-all cursor-pointer"
+              >
+                Continue Shopping
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Footer */}
-      <footer className="bg-forest-dark text-gray-400 text-center py-3 text-[10px] sm:text-xs border-t-2 border-gold">
+      <footer className="bg-forest-dark text-gray-400 text-center py-3 text-[10px] sm:text-xs border-t-2 border-gold mt-auto">
         <p>&copy; 2026 ModerNutrition &bull; Member Exclusive Store &bull; All purchases earn PV, CV & 9% Reward</p>
       </footer>
     </div>
