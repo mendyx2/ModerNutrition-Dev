@@ -1,13 +1,55 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api, { setAuthToken } from '../services/api';
+import api, { setAuthToken, getAuthToken } from '../services/api';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  // Token stays in memory state ONLY
-  const [token, setTokenState] = useState(null);
-  const [user, setUser] = useState(null);
+  const [token, setTokenState] = useState(() => localStorage.getItem('mn_member_token') || null);
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mn_member_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
+
+  // Background session verification on initial load
+  useEffect(() => {
+    const initAuth = async () => {
+      const storedToken = localStorage.getItem('mn_member_token');
+      if (storedToken) {
+        setAuthToken(storedToken);
+        setTokenState(storedToken);
+
+        try {
+          // Fetch freshest user profile from API in background
+          const res = await api.get('/auth/me');
+          if (res.data?.member) {
+            const member = res.data.member;
+            const storedAvatar = localStorage.getItem(`mn_avatar_${member.id}`);
+            const fullUser = {
+              ...member,
+              avatar: storedAvatar || member.avatar_path || null,
+              roles: res.data.roles || [],
+              permissions: res.data.permissions || []
+            };
+            setUser(fullUser);
+            localStorage.setItem('mn_member_user', JSON.stringify(fullUser));
+          }
+        } catch (err) {
+          if (err.response?.status === 401) {
+            // Token expired or invalid
+            logout();
+          }
+        }
+      }
+      setLoading(false);
+    };
+
+    initAuth();
+  }, []);
 
   const login = async (email, password) => {
     try {
@@ -25,26 +67,29 @@ export const AuthProvider = ({ children }) => {
       setAuthToken(newToken);
       setTokenState(newToken);
       setUser(fullUser);
+      localStorage.setItem('mn_member_user', JSON.stringify(fullUser));
       return { success: true };
     } catch (err) {
       return {
         success: false,
-        message: err.response?.data?.message || 'Login failed'
+        message: err.response?.data?.message || 'Login failed. Please verify your credentials.'
       };
     }
   };
 
   const logout = async () => {
     try {
-      if (token) {
+      if (token || getAuthToken()) {
         await api.post('/auth/logout');
       }
     } catch (err) {
-      console.warn('Logout notification error:', err);
+      console.warn('Logout API notification error:', err);
     } finally {
       setAuthToken(null);
       setTokenState(null);
       setUser(null);
+      localStorage.removeItem('mn_member_token');
+      localStorage.removeItem('mn_member_user');
     }
   };
 
@@ -55,6 +100,7 @@ export const AuthProvider = ({ children }) => {
       if (updatedFields.avatar && prev.id) {
         localStorage.setItem(`mn_avatar_${prev.id}`, updatedFields.avatar);
       }
+      localStorage.setItem('mn_member_user', JSON.stringify(updated));
       return updated;
     });
   };
@@ -64,11 +110,8 @@ export const AuthProvider = ({ children }) => {
     setAuthToken('demo-token-12345');
     setTokenState('demo-token-12345');
     setUser(demoMemberData);
+    localStorage.setItem('mn_member_user', JSON.stringify(demoMemberData));
   };
-
-  useEffect(() => {
-    setLoading(false);
-  }, []);
 
   return (
     <AuthContext.Provider value={{ token, user, login, logout, updateUser, setDemoUser, loading }}>

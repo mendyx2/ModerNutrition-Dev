@@ -1,12 +1,17 @@
 import axios from 'axios';
 
-let inMemoryToken = null;
+let inMemoryToken = localStorage.getItem('mn_member_token') || null;
 
 export const setAuthToken = (token) => {
   inMemoryToken = token;
+  if (token) {
+    localStorage.setItem('mn_member_token', token);
+  } else {
+    localStorage.removeItem('mn_member_token');
+  }
 };
 
-export const getAuthToken = () => inMemoryToken;
+export const getAuthToken = () => inMemoryToken || localStorage.getItem('mn_member_token');
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -18,10 +23,11 @@ const api = axios.create({
   }
 });
 
-// Interceptor to attach in-memory Sanctum Bearer token
+// Interceptor to attach Sanctum Bearer token from memory or storage
 api.interceptors.request.use((config) => {
-  if (inMemoryToken) {
-    config.headers.Authorization = `Bearer ${inMemoryToken}`;
+  const currentToken = inMemoryToken || localStorage.getItem('mn_member_token');
+  if (currentToken) {
+    config.headers.Authorization = `Bearer ${currentToken}`;
   }
   return config;
 });
@@ -30,6 +36,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response?.status === 401) {
+      // Session expired
+      localStorage.removeItem('mn_member_token');
+      localStorage.removeItem('mn_member_user');
+      inMemoryToken = null;
+    }
     if (error.message === 'Network Error') {
       const isLocalhost = API_BASE_URL.includes('localhost');
       const customMsg = isLocalhost

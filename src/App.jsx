@@ -21,7 +21,7 @@ const queryClient = new QueryClient({
 });
 
 function AppRouter() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   
   // Determine initial view from pathname
   const getInitialView = () => {
@@ -52,6 +52,20 @@ function AppRouter() {
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Show loading splash during initial cache hydration
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-surface flex flex-col items-center justify-center space-y-4">
+        <img
+          src="/assets/logo_header_landing_page.png"
+          alt="ModerNutrition"
+          className="w-16 h-16 object-contain rounded-2xl border-2 border-gold shadow-lg animate-pulse"
+        />
+        <div className="text-xs font-bold text-forest tracking-wider uppercase">Loading Portal...</div>
+      </div>
+    );
+  }
 
   // Auth / Public Views
   if (currentView === 'register') {
