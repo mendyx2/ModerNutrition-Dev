@@ -13,7 +13,7 @@ export const setAuthToken = (token) => {
 
 export const getAuthToken = () => inMemoryToken || localStorage.getItem('mn_member_token');
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://modernutrition-backend-production.up.railway.app/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
