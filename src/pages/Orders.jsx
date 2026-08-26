@@ -4,8 +4,24 @@ import api from '../services/api';
 import {
   Package, ShoppingBag, Calendar, Clock, CheckCircle2,
   Search, Filter, ArrowLeft, ChevronRight, ExternalLink,
-  DollarSign, Award, RefreshCw, X, AlertCircle
+  DollarSign, Award, RefreshCw, X, AlertCircle, Truck, ShieldCheck
 } from 'lucide-react';
+
+const STATUS_CONFIG = {
+  pending: { label: 'Pending Confirmation', bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-300' },
+  paid: { label: 'Payment Confirmed', bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-300' },
+  processing: { label: 'Packaging Goods', bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-300' },
+  shipped: { label: 'In Transit', bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300' },
+  delivered: { label: 'Delivered', bg: 'bg-teal-100', text: 'text-teal-800', border: 'border-teal-300' },
+  cancelled: { label: 'Cancelled', bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-300' },
+};
+
+const TRACKING_STAGES = [
+  { key: 'pending', label: 'Placed' },
+  { key: 'paid', label: 'Paid' },
+  { key: 'shipped', label: 'Shipped' },
+  { key: 'delivered', label: 'Delivered' },
+];
 
 export default function Orders({ onBack, onNavigateToShop }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -17,7 +33,8 @@ export default function Orders({ onBack, onNavigateToShop }) {
       try {
         const res = await api.get('/member/orders');
         return res.data?.data || res.data || [];
-      } catch {
+      } catch (err) {
+        console.error('Failed to fetch member orders:', err);
         return [];
       }
     },
@@ -42,8 +59,8 @@ export default function Orders({ onBack, onNavigateToShop }) {
   // Aggregate stats
   const totalOrders = orders.length;
   const totalSpentCents = orders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + (o.total_cents || 0), 0);
-  const totalPVEarned = orders.filter(o => o.status === 'paid').reduce((sum, o) => sum + (Number(o.total_pv) || 0), 0);
-  const totalCVEarned = orders.filter(o => o.status === 'paid').reduce((sum, o) => sum + (Number(o.total_cv) || 0), 0);
+  const totalPVEarned = orders.filter(o => o.status === 'paid' || o.status === 'shipped' || o.status === 'delivered').reduce((sum, o) => sum + (Number(o.total_pv) || 0), 0);
+  const totalCVEarned = orders.filter(o => o.status === 'paid' || o.status === 'shipped' || o.status === 'delivered').reduce((sum, o) => sum + (Number(o.total_cv) || 0), 0);
 
   return (
     <div className="min-h-screen bg-surface flex flex-col antialiased">
@@ -150,7 +167,7 @@ export default function Orders({ onBack, onNavigateToShop }) {
 
           {/* Status Tabs */}
           <div className="flex items-center space-x-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-            {['all', 'pending', 'paid', 'cancelled'].map((status) => (
+            {['all', 'pending', 'paid', 'shipped', 'delivered', 'cancelled'].map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
@@ -193,90 +210,137 @@ export default function Orders({ onBack, onNavigateToShop }) {
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredOrders.map((order) => (
-              <div
-                key={order.id}
-                className="bg-white rounded-2xl p-4 sm:p-5 border border-forest-subtle shadow-xs hover:shadow-card hover:border-forest/30 transition-all space-y-3"
-              >
-                {/* Header info */}
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-forest/10 flex items-center justify-center text-forest">
-                      <Package className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <strong className="text-sm font-mono font-extrabold text-forest-dark">{order.order_number}</strong>
-                        <span className={`text-[9px] sm:text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
-                          order.status === 'pending'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                            : order.status === 'paid'
-                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                            : order.status === 'cancelled'
-                            ? 'bg-red-100 text-red-800 border border-red-300'
-                            : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {order.status === 'pending' ? 'Pending Confirmation' : order.status}
-                        </span>
+            {filteredOrders.map((order) => {
+              const cfg = STATUS_CONFIG[order.status] || { label: order.status, bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-300' };
+
+              // Stepper progress computation
+              const stageOrder = ['pending', 'paid', 'shipped', 'delivered'];
+              const currentStageIdx = stageOrder.indexOf(order.status === 'processing' ? 'paid' : order.status);
+
+              return (
+                <div
+                  key={order.id}
+                  className="bg-white rounded-2xl p-4 sm:p-5 border border-forest-subtle shadow-xs hover:shadow-card hover:border-forest/30 transition-all space-y-4"
+                >
+                  {/* Header info */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+                    <div className="flex items-center space-x-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-forest/10 flex items-center justify-center text-forest">
+                        <Package className="w-4 h-4" />
                       </div>
-                      <div className="flex items-center space-x-1.5 text-[11px] text-muted mt-0.5">
-                        <Calendar className="w-3 h-3" />
-                        <span>{new Date(order.created_at || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                        {order.payment_method && (
-                          <>
-                            <span>&bull;</span>
-                            <span className="capitalize">{order.payment_method.replace('_', ' ')}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="text-base sm:text-lg font-extrabold text-forest-dark">
-                      ${((order.total_cents || 0) / 100).toFixed(2)}
-                    </div>
-                    <div className="text-[10px] font-bold text-forest flex items-center justify-end space-x-1">
-                      <span className="text-gold-dark">+{order.total_pv || 0} PV</span>
-                      <span>&bull;</span>
-                      <span className="text-leaf">+{order.total_cv || 0} CV</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pending notice */}
-                {order.status === 'pending' && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center space-x-2 text-[11px] text-amber-800">
-                    <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                    <span>Awaiting Admin payment confirmation. Once verified, your PV/CV points and 9% Reward will be credited to your wallet.</span>
-                  </div>
-                )}
-
-                {/* Line Items */}
-                {order.items && order.items.length > 0 && (
-                  <div className="bg-surface rounded-xl p-3 space-y-2">
-                    {order.items.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-xs">
-                        <div className="flex items-center space-x-2 min-w-0 pr-2">
-                          <span className="w-5 h-5 rounded-md bg-white text-forest-dark font-bold text-[10px] flex items-center justify-center border border-gray-200">
-                            {item.quantity || 1}×
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <strong className="text-sm font-mono font-extrabold text-forest-dark">{order.order_number}</strong>
+                          <span className={`text-[9px] sm:text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+                            {cfg.label}
                           </span>
-                          <span className="font-semibold text-gray-800 truncate">
-                            {item.product_name || item.product?.name || 'VitaActive Nutrition Product'}
-                          </span>
-                          {item.sku && (
-                            <span className="text-[10px] font-mono text-muted hidden sm:inline">({item.sku})</span>
+                        </div>
+                        <div className="flex items-center space-x-1.5 text-[11px] text-muted mt-0.5">
+                          <Calendar className="w-3 h-3" />
+                          <span>{new Date(order.created_at || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                          {order.payment_method && (
+                            <>
+                              <span>&bull;</span>
+                              <span className="capitalize">{order.payment_method.replace('_', ' ')}</span>
+                            </>
                           )}
                         </div>
-                        <span className="font-bold text-forest-dark flex-shrink-0">
-                          ${(((item.unit_price_cents || item.line_total_cents || 0)) / 100).toFixed(2)}
-                        </span>
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-base sm:text-lg font-extrabold text-forest-dark">
+                        ${((order.total_cents || 0) / 100).toFixed(2)}
+                      </div>
+                      <div className="text-[10px] font-bold text-forest flex items-center justify-end space-x-1">
+                        <span className="text-gold-dark">+{order.total_pv || 0} PV</span>
+                        <span>&bull;</span>
+                        <span className="text-leaf">+{order.total_cv || 0} CV</span>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {/* ── Visual Delivery Timeline ── */}
+                  {order.status !== 'cancelled' && (
+                    <div className="bg-surface p-3 rounded-xl border border-forest-subtle">
+                      <div className="flex items-center justify-between relative">
+                        <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-gray-200 -translate-y-1/2 z-0" />
+                        <div
+                          className="absolute top-1/2 left-4 h-0.5 bg-forest -translate-y-1/2 z-0 transition-all"
+                          style={{ width: `${Math.max(0, Math.min(100, (currentStageIdx / (TRACKING_STAGES.length - 1)) * 100))}%` }}
+                        />
+
+                        {TRACKING_STAGES.map((stage, idx) => {
+                          const isDone = idx <= currentStageIdx;
+                          const isCurrent = idx === currentStageIdx;
+
+                          return (
+                            <div key={stage.key} className="flex flex-col items-center relative z-10">
+                              <div
+                                className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold transition-all ${
+                                  isCurrent
+                                    ? 'bg-forest text-white ring-4 ring-forest/20 shadow-xs'
+                                    : isDone
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-white border-2 border-gray-300 text-gray-400'
+                                }`}
+                              >
+                                {isDone ? '✓' : idx + 1}
+                              </div>
+                              <span className={`text-[10px] font-bold mt-1 ${isCurrent ? 'text-forest' : isDone ? 'text-gray-700' : 'text-gray-400'}`}>
+                                {stage.label}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {order.tracking_number && (
+                        <div className="mt-2.5 pt-2 border-t border-gray-200 flex items-center justify-between text-[11px]">
+                          <span className="text-muted flex items-center space-x-1">
+                            <Truck className="w-3.5 h-3.5 text-forest" />
+                            <span>Waybill / Tracking:</span>
+                          </span>
+                          <strong className="text-forest-dark font-mono font-bold">{order.tracking_number}</strong>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Pending Notice */}
+                  {order.status === 'pending' && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center space-x-2 text-[11px] text-amber-800">
+                      <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                      <span>Awaiting Admin payment confirmation. Once verified, your PV/CV points and 9% Reward will be credited to your wallet.</span>
+                    </div>
+                  )}
+
+                  {/* Line Items */}
+                  {order.items && order.items.length > 0 && (
+                    <div className="bg-surface rounded-xl p-3 space-y-2">
+                      {order.items.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center space-x-2 min-w-0 pr-2">
+                            <span className="w-5 h-5 rounded-md bg-white text-forest-dark font-bold text-[10px] flex items-center justify-center border border-gray-200">
+                              {item.quantity || 1}×
+                            </span>
+                            <span className="font-semibold text-gray-800 truncate">
+                              {item.product_name || item.product?.name || 'VitaActive Nutrition Product'}
+                            </span>
+                            {item.sku && (
+                              <span className="text-[10px] font-mono text-muted hidden sm:inline">({item.sku})</span>
+                            )}
+                          </div>
+                          <span className="font-bold text-forest-dark flex-shrink-0">
+                            ${(((item.unit_price_cents || item.line_total_cents || 0)) / 100).toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
