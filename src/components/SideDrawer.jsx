@@ -93,23 +93,23 @@ export default function SideDrawer({ isOpen, onClose, onOpenOrders, onOpenInvite
         onClick={onClose}
       />
 
-      {/* Slide-over Drawer */}
+      {/* Right Slide-over Drawer */}
       <aside
-        className="fixed inset-y-0 left-0 w-[290px] sm:w-[320px] bg-white z-50 shadow-2xl flex flex-col justify-between border-r border-forest-subtle animate-in slide-in-from-left duration-300"
+        className="fixed inset-y-0 right-0 w-[290px] sm:w-[320px] bg-white z-50 shadow-2xl flex flex-col justify-between border-l border-forest-subtle animate-in slide-in-from-right duration-300"
       >
         {/* Top Section */}
         <div className="flex flex-col flex-1 overflow-y-auto">
           
           {/* Drawer Brand Header */}
-          <div className="bg-forest-dark text-white p-5 border-b-2 border-gold flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+          <div className="bg-forest-dark text-white p-4 sm:p-5 border-b-2 border-gold flex items-center justify-between">
+            <div className="flex items-center space-x-2.5 sm:space-x-3">
               <img
                 src="/assets/logo_header_landing_page.png"
                 alt="ModerNutrition"
-                className="w-10 h-10 object-contain rounded-lg border border-gold bg-white p-0.5"
+                className="w-9 h-9 sm:w-10 sm:h-10 object-contain rounded-lg border border-gold bg-white p-0.5"
               />
               <div>
-                <span className="font-heading font-extrabold text-base tracking-wide text-white block leading-tight">
+                <span className="font-heading font-extrabold text-sm sm:text-base tracking-wide text-white block leading-tight">
                   Moder<span className="text-gold">N</span>utrition
                 </span>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-gold-light">
@@ -128,7 +128,7 @@ export default function SideDrawer({ isOpen, onClose, onOpenOrders, onOpenInvite
           {/* Member Profile Card inside Drawer */}
           <div className="p-4 bg-surface border-b border-gray-100">
             <div className="flex items-center space-x-3">
-              <div className="w-11 h-11 rounded-full bg-gold/20 border-2 border-gold flex items-center justify-center text-forest-dark font-extrabold text-lg flex-shrink-0">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gold/20 border-2 border-gold flex items-center justify-center text-forest-dark font-extrabold text-base sm:text-lg flex-shrink-0">
                 {user?.first_name?.[0] || 'M'}
               </div>
               <div className="min-w-0 flex-1">
@@ -153,7 +153,7 @@ export default function SideDrawer({ isOpen, onClose, onOpenOrders, onOpenInvite
               </div>
               <div className="bg-forest-subtle p-2 rounded-lg border border-forest/10 flex items-center space-x-1.5 text-forest">
                 <Globe className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="text-[11px] font-extrabold">{user?.country || 'COD'} (Congo)</span>
+                <span className="text-[11px] font-extrabold">{user?.country || 'COD'}</span>
               </div>
             </div>
           </div>

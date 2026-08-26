@@ -81,40 +81,28 @@ export default function Header({ onOpenDrawer, onOpenOrders, onOpenInvite }) {
   return (
     <header className="bg-forest-dark text-white border-b-2 sm:border-b-4 border-gold sticky top-0 z-40 shadow-lg">
       
-      {/* ── Top Bar: Logo, Menu & Account Actions ── */}
+      {/* ── Top Bar: Logo (Left) and Actions + Menu (Right) ── */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-20">
           
-          {/* Left: Hamburger Drawer Toggle + Logo */}
-          <div className="flex items-center space-x-2.5 sm:space-x-4">
-            
-            {/* Hamburger Button that opens the Side Drawer */}
-            <button
-              onClick={onOpenDrawer}
-              className="p-2 sm:p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center justify-center border border-white/10 active:scale-95"
-              aria-label="Open Navigation Menu"
-              title="Menu"
-            >
-              <Menu className="w-5 h-5 text-gold" />
-            </button>
-
-            {/* Logo & Brand */}
-            <div className="flex items-center space-x-2 sm:space-x-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-              <img 
-                src="/assets/logo_header_landing_page.png" 
-                alt="ModerNutrition" 
-                className="h-8 w-8 sm:h-10 sm:w-10 object-contain rounded-lg border border-gold bg-white p-0.5 shadow-xs" 
-              />
-              <div>
-                <span className="font-heading font-extrabold text-sm sm:text-base tracking-wide text-white block leading-tight">
-                  Moder<span className="text-gold">N</span>utrition
-                </span>
-                <span className="bg-gold text-forest-dark text-[9px] sm:text-[10px] font-extrabold px-1.5 sm:px-2 py-0.2 rounded-full uppercase tracking-wider hidden xs:inline-block">
-                  Member Portal
-                </span>
-              </div>
+          {/* Left: Logo & Brand */}
+          <div 
+            className="flex items-center space-x-2 sm:space-x-3 cursor-pointer" 
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
+            <img 
+              src="/assets/logo_header_landing_page.png" 
+              alt="ModerNutrition" 
+              className="h-8 w-8 sm:h-10 sm:w-10 object-contain rounded-lg border border-gold bg-white p-0.5 shadow-xs" 
+            />
+            <div>
+              <span className="font-heading font-extrabold text-sm sm:text-base tracking-wide text-white block leading-tight">
+                Moder<span className="text-gold">N</span>utrition
+              </span>
+              <span className="bg-gold text-forest-dark text-[9px] sm:text-[10px] font-extrabold px-1.5 sm:px-2 py-0.2 rounded-full uppercase tracking-wider hidden xs:inline-block">
+                Member Portal
+              </span>
             </div>
-
           </div>
 
           {/* ── Desktop Navigation Menu Bar ── */}
@@ -169,7 +157,7 @@ export default function Header({ onOpenDrawer, onOpenOrders, onOpenInvite }) {
             })}
           </nav>
 
-          {/* Right Actions: Invite Button, Language, Profile & Logout */}
+          {/* Right Actions: Invite Button, Language Selector & Menu Button */}
           <div className="flex items-center space-x-2 sm:space-x-3">
             
             {/* Quick Invite Button */}
@@ -192,14 +180,14 @@ export default function Header({ onOpenDrawer, onOpenOrders, onOpenInvite }) {
               <option value="fr">FR 🇨🇩</option>
             </select>
 
-            {/* Logout Button */}
+            {/* Menu (☰) Button on the Right */}
             <button
-              onClick={logout}
-              className="hidden sm:flex items-center space-x-1 text-xs font-bold text-gray-300 hover:text-gold transition-colors p-1.5 rounded-lg hover:bg-white/5"
-              title="Logout"
+              onClick={onOpenDrawer}
+              className="p-2 sm:p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center justify-center border border-white/10 active:scale-95 ml-1"
+              aria-label="Open Navigation Menu"
+              title="Menu"
             >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden md:inline">{t('nav.logout')}</span>
+              <Menu className="w-5 h-5 text-gold" />
             </button>
 
           </div>

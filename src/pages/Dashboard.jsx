@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import SideDrawer from '../components/SideDrawer';
-import BottomNav from '../components/BottomNav';
 import CommerceThisMonth from '../components/CommerceThisMonth';
 import FiveRewardCards from '../components/FiveRewardCards';
 import AvailableBalance from '../components/AvailableBalance';
@@ -79,14 +78,14 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-surface flex flex-col antialiased selection:bg-gold selection:text-forest-dark">
 
-      {/* ── 1. Compact Header with Drawer Hamburger Trigger ── */}
+      {/* ── 1. Header with Right-Side Menu Trigger ── */}
       <Header
         onOpenDrawer={() => setSideDrawerOpen(true)}
         onOpenOrders={() => setOrdersModalOpen(true)}
         onOpenInvite={() => setInviteModalOpen(true)}
       />
 
-      {/* ── Side Navigation Slide-Over Drawer ── */}
+      {/* ── Right-Side Slide-Over Navigation Drawer ── */}
       <SideDrawer
         isOpen={sideDrawerOpen}
         onClose={() => setSideDrawerOpen(false)}
@@ -94,8 +93,8 @@ export default function Dashboard() {
         onOpenInvite={() => setInviteModalOpen(true)}
       />
 
-      {/* ── Main Content Body with Safe Bottom Padding for Mobile ── */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6 sm:space-y-8 pb-28 md:pb-12">
+      {/* ── Main Content Body ── */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6 sm:space-y-8 pb-12">
 
         {/* ── 2. Your Commerce This Month ── */}
         <CommerceThisMonth data={dashboardData} isLoading={isLoading} />
@@ -124,12 +123,6 @@ export default function Dashboard() {
         </div>
 
       </main>
-
-      {/* ── Sticky Mobile Bottom Navigation Bar ── */}
-      <BottomNav
-        onOpenOrders={() => setOrdersModalOpen(true)}
-        onOpenInvite={() => setInviteModalOpen(true)}
-      />
 
       {/* ── Orders Modal (Bottom Sheet on Mobile) ── */}
       <OrdersModal
@@ -226,7 +219,7 @@ export default function Dashboard() {
       )}
 
       {/* Footer */}
-      <footer className="hidden sm:block bg-forest-dark text-gray-400 text-center py-4 text-xs border-t-4 border-gold">
+      <footer className="bg-forest-dark text-gray-400 text-center py-4 text-xs border-t-4 border-gold">
         <p>&copy; 2026 ModerNutrition Platform. Member Portal v1.0</p>
       </footer>
     </div>
