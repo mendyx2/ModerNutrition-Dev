@@ -4,7 +4,7 @@ import api from '../services/api';
 import {
   Package, ShoppingBag, Calendar, Clock, CheckCircle2,
   Search, Filter, ArrowLeft, ChevronRight, ExternalLink,
-  DollarSign, Award, RefreshCw, X
+  DollarSign, Award, RefreshCw, X, AlertCircle
 } from 'lucide-react';
 
 export default function Orders({ onBack, onNavigateToShop }) {
@@ -18,35 +18,7 @@ export default function Orders({ onBack, onNavigateToShop }) {
         const res = await api.get('/member/orders');
         return res.data?.data || res.data || [];
       } catch {
-        return [
-          {
-            id: 1,
-            order_number: 'ORD-88A92F10',
-            status: 'paid',
-            total_cents: 8500,
-            total_pv: 70.00,
-            total_cv: 60.00,
-            payment_method: 'Mobile Money (DRC)',
-            created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-            items: [
-              { id: 1, product_name: 'VitaActive™ Complete Meal Cereal', quantity: 1, unit_price_cents: 4500, sku: 'VITA-ACT-001' },
-              { id: 2, product_name: 'VitaGold™ Fortified Swallow Mix', quantity: 1, unit_price_cents: 4000, sku: 'VITA-GLD-002' }
-            ]
-          },
-          {
-            id: 2,
-            order_number: 'ORD-44B19C02',
-            status: 'paid',
-            total_cents: 6000,
-            total_pv: 44.00,
-            total_cv: 40.00,
-            payment_method: 'Airtel Money',
-            created_at: new Date(Date.now() - 86400000 * 8).toISOString(),
-            items: [
-              { id: 3, product_name: 'Daily Greens Vitality Elixir', quantity: 2, unit_price_cents: 3000, sku: 'WELL-GRN-003' }
-            ]
-          }
-        ];
+        return [];
       }
     },
   });
@@ -69,9 +41,9 @@ export default function Orders({ onBack, onNavigateToShop }) {
 
   // Aggregate stats
   const totalOrders = orders.length;
-  const totalSpentCents = orders.reduce((sum, o) => sum + (o.total_cents || 0), 0);
-  const totalPVEarned = orders.reduce((sum, o) => sum + (Number(o.total_pv) || 0), 0);
-  const totalCVEarned = orders.reduce((sum, o) => sum + (Number(o.total_cv) || 0), 0);
+  const totalSpentCents = orders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + (o.total_cents || 0), 0);
+  const totalPVEarned = orders.filter(o => o.status === 'paid').reduce((sum, o) => sum + (Number(o.total_pv) || 0), 0);
+  const totalCVEarned = orders.filter(o => o.status === 'paid').reduce((sum, o) => sum + (Number(o.total_cv) || 0), 0);
 
   return (
     <div className="min-h-screen bg-surface flex flex-col antialiased">
@@ -84,7 +56,7 @@ export default function Orders({ onBack, onNavigateToShop }) {
             <div className="flex items-center space-x-3">
               <button
                 onClick={onBack}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors active:scale-95"
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors active:scale-95 cursor-pointer"
                 title="Back to Dashboard"
               >
                 <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gold" />
@@ -100,7 +72,7 @@ export default function Orders({ onBack, onNavigateToShop }) {
 
             <button
               onClick={onNavigateToShop}
-              className="flex items-center space-x-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-gold text-forest-dark font-extrabold text-xs sm:text-sm shadow hover:bg-gold-dark active:scale-95 transition-all"
+              className="flex items-center space-x-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 bg-gold hover:bg-gold-light text-forest-dark font-extrabold text-xs sm:text-sm rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
             >
               <ShoppingBag className="w-4 h-4" />
               <span>Shop More</span>
@@ -110,33 +82,49 @@ export default function Orders({ onBack, onNavigateToShop }) {
         </div>
       </header>
 
-      {/* ── Main Content Body ── */}
+      {/* ── Main Content ── */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6">
 
-        {/* ── Summary Statistics Cards ── */}
+        {/* ── Statistics Overview Cards ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-white p-4 rounded-2xl border border-forest-subtle shadow-xs">
-            <span className="text-[10px] sm:text-xs font-bold text-muted uppercase tracking-wider block mb-1">Total Orders</span>
-            <div className="text-xl sm:text-2xl font-extrabold text-forest-dark">{totalOrders}</div>
-            <span className="text-[10px] text-forest font-semibold mt-0.5 block">Lifetime purchases</span>
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-muted block mb-1">
+              Total Orders
+            </span>
+            <div className="text-xl sm:text-2xl font-heading font-extrabold text-forest-dark">
+              {totalOrders}
+            </div>
+            <span className="text-[10px] text-muted block mt-0.5">Lifetime purchases</span>
           </div>
 
           <div className="bg-white p-4 rounded-2xl border border-forest-subtle shadow-xs">
-            <span className="text-[10px] sm:text-xs font-bold text-muted uppercase tracking-wider block mb-1">Total Spent</span>
-            <div className="text-xl sm:text-2xl font-extrabold text-forest-dark">${(totalSpentCents / 100).toFixed(2)}</div>
-            <span className="text-[10px] text-forest font-semibold mt-0.5 block">Product value</span>
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-muted block mb-1">
+              Total Spent
+            </span>
+            <div className="text-xl sm:text-2xl font-heading font-extrabold text-forest-dark">
+              ${(totalSpentCents / 100).toFixed(2)}
+            </div>
+            <span className="text-[10px] text-muted block mt-0.5">Product value</span>
           </div>
 
           <div className="bg-white p-4 rounded-2xl border border-forest-subtle shadow-xs">
-            <span className="text-[10px] sm:text-xs font-bold text-muted uppercase tracking-wider block mb-1">Total PV Earned</span>
-            <div className="text-xl sm:text-2xl font-extrabold text-gold-dark">+{totalPVEarned.toFixed(1)} PV</div>
-            <span className="text-[10px] text-gold font-semibold mt-0.5 block">Rank qualification</span>
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-muted block mb-1">
+              Total PV Earned
+            </span>
+            <div className="text-xl sm:text-2xl font-heading font-extrabold text-gold-dark">
+              +{totalPVEarned.toFixed(1)} PV
+            </div>
+            <span className="text-[10px] text-muted block mt-0.5">Rank qualification</span>
           </div>
 
           <div className="bg-white p-4 rounded-2xl border border-forest-subtle shadow-xs">
-            <span className="text-[10px] sm:text-xs font-bold text-muted uppercase tracking-wider block mb-1">Total CV Earned</span>
-            <div className="text-xl sm:text-2xl font-extrabold text-leaf">+{totalCVEarned.toFixed(1)} CV</div>
-            <span className="text-[10px] text-leaf font-semibold mt-0.5 block">Reward allocations</span>
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-muted block mb-1">
+              Total CV Earned
+            </span>
+            <div className="text-xl sm:text-2xl font-heading font-extrabold text-leaf">
+              +{totalCVEarned.toFixed(1)} CV
+            </div>
+            <span className="text-[10px] text-muted block mt-0.5">Reward allocations</span>
           </div>
         </div>
 
@@ -162,11 +150,11 @@ export default function Orders({ onBack, onNavigateToShop }) {
 
           {/* Status Tabs */}
           <div className="flex items-center space-x-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-            {['all', 'paid', 'pending', 'cancelled'].map((status) => (
+            {['all', 'pending', 'paid', 'cancelled'].map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all whitespace-nowrap ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold capitalize transition-all whitespace-nowrap cursor-pointer ${
                   statusFilter === status
                     ? 'bg-forest text-white shadow-xs'
                     : 'bg-surface text-muted hover:bg-gray-200'
@@ -191,11 +179,13 @@ export default function Orders({ onBack, onNavigateToShop }) {
             <p className="text-xs text-muted max-w-sm mx-auto">
               {searchQuery
                 ? `No orders matching "${searchQuery}".`
+                : statusFilter !== 'all'
+                ? `No orders currently in "${statusFilter}" status.`
                 : "You haven't placed any member orders yet. Explore our VitaSeries™ product collection to earn your 9% purchase rewards."}
             </p>
             <button
               onClick={onNavigateToShop}
-              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-forest text-white font-bold text-xs shadow hover:bg-forest-dark transition-all"
+              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-forest text-white font-bold text-xs shadow hover:bg-forest-dark transition-all cursor-pointer"
             >
               <ShoppingBag className="w-4 h-4 text-gold" />
               <span>Browse VitaSeries™ Shop</span>
@@ -217,8 +207,16 @@ export default function Orders({ onBack, onNavigateToShop }) {
                     <div>
                       <div className="flex items-center space-x-2">
                         <strong className="text-sm font-mono font-extrabold text-forest-dark">{order.order_number}</strong>
-                        <span className="text-[9px] sm:text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                          {order.status || 'paid'}
+                        <span className={`text-[9px] sm:text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
+                          order.status === 'pending'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            : order.status === 'paid'
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : order.status === 'cancelled'
+                            ? 'bg-red-100 text-red-800 border border-red-300'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {order.status === 'pending' ? 'Pending Confirmation' : order.status}
                         </span>
                       </div>
                       <div className="flex items-center space-x-1.5 text-[11px] text-muted mt-0.5">
@@ -227,7 +225,7 @@ export default function Orders({ onBack, onNavigateToShop }) {
                         {order.payment_method && (
                           <>
                             <span>&bull;</span>
-                            <span>{order.payment_method}</span>
+                            <span className="capitalize">{order.payment_method.replace('_', ' ')}</span>
                           </>
                         )}
                       </div>
@@ -245,6 +243,14 @@ export default function Orders({ onBack, onNavigateToShop }) {
                     </div>
                   </div>
                 </div>
+
+                {/* Pending notice */}
+                {order.status === 'pending' && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center space-x-2 text-[11px] text-amber-800">
+                    <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                    <span>Awaiting Admin payment confirmation. Once verified, your PV/CV points and 9% Reward will be credited to your wallet.</span>
+                  </div>
+                )}
 
                 {/* Line Items */}
                 {order.items && order.items.length > 0 && (
@@ -277,7 +283,7 @@ export default function Orders({ onBack, onNavigateToShop }) {
       </main>
 
       {/* Footer */}
-      <footer className="bg-forest-dark text-gray-400 text-center py-4 text-xs border-t-2 border-gold">
+      <footer className="bg-forest-dark text-gray-400 text-center py-4 text-xs border-t-2 border-gold mt-auto">
         <p>&copy; 2026 ModerNutrition Platform &bull; Member Order Management</p>
       </footer>
     </div>
