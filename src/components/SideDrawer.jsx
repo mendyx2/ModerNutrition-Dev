@@ -2,19 +2,25 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import {
-  X, LayoutDashboard, ShoppingBag, ClipboardList, Wallet, Users, UserPlus,
-  ExternalLink, LogOut, Globe, Award, ShieldCheck, User, ChevronRight
+  X, LayoutDashboard, ShoppingBag, ClipboardList, Wallet, Users, GitMerge,
+  User, LogOut, Globe, Award, ShieldCheck, ChevronRight
 } from 'lucide-react';
 
-export default function SideDrawer({ isOpen, onClose, onOpenOrders, onOpenInvite, onNavigateToShop }) {
+export default function SideDrawer({
+  isOpen,
+  onClose,
+  activeView = 'dashboard',
+  onNavigateToDashboard,
+  onNavigateToShop,
+  onNavigateToOrders,
+  onNavigateToWallet,
+  onNavigateToTeam,
+  onNavigateToProfile
+}) {
   const { user, logout } = useAuth();
   const { i18n, t } = useTranslation();
 
   if (!isOpen) return null;
-
-  const publicShopUrl = window.location.origin.includes('localhost')
-    ? 'http://localhost:5173/catalogue.html'
-    : 'https://modernutrition-public.vercel.app/catalogue.html';
 
   const changeLanguage = (lang) => {
     i18n.changeLanguage(lang);
@@ -29,7 +35,7 @@ export default function SideDrawer({ isOpen, onClose, onOpenOrders, onOpenInvite
       icon: LayoutDashboard,
       onClick: () => {
         onClose();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (onNavigateToDashboard) onNavigateToDashboard();
       },
     },
     {
@@ -45,44 +51,42 @@ export default function SideDrawer({ isOpen, onClose, onOpenOrders, onOpenInvite
     {
       id: 'orders',
       label: 'My Orders',
-      desc: 'View order history & delivery',
+      desc: 'Order history, delivery & PV/CV',
       icon: ClipboardList,
       onClick: () => {
         onClose();
-        if (onOpenOrders) onOpenOrders();
+        if (onNavigateToOrders) onNavigateToOrders();
       },
     },
     {
       id: 'wallet',
       label: 'My Wallet',
-      desc: 'Balances & transaction ledger',
+      desc: 'Balances, ledger & payout requests',
       icon: Wallet,
       onClick: () => {
         onClose();
-        const el = document.getElementById('wallet-section');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
+        if (onNavigateToWallet) onNavigateToWallet();
       },
     },
     {
       id: 'team',
       label: 'My Binary Team',
-      desc: 'Downline tree & GV volumes',
-      icon: Users,
+      desc: 'Genealogy tree & GV volumes',
+      icon: GitMerge,
       onClick: () => {
         onClose();
-        const el = document.getElementById('team-section');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
+        if (onNavigateToTeam) onNavigateToTeam();
       },
     },
     {
-      id: 'invite',
-      label: 'Invite / Sponsor',
-      desc: 'Share personal referral link',
-      icon: UserPlus,
+      id: 'profile',
+      label: 'My Profile & Sponsor',
+      desc: 'Referral link & account credentials',
+      icon: User,
       special: true,
       onClick: () => {
         onClose();
-        if (onOpenInvite) onOpenInvite();
+        if (onNavigateToProfile) onNavigateToProfile();
       },
     },
   ];
@@ -127,10 +131,16 @@ export default function SideDrawer({ isOpen, onClose, onOpenOrders, onOpenInvite
             </button>
           </div>
 
-          {/* Member Profile Card inside Drawer */}
-          <div className="p-4 bg-surface border-b border-gray-100">
+          {/* Member Profile Card inside Drawer (clickable to go to Profile) */}
+          <div
+            onClick={() => {
+              onClose();
+              if (onNavigateToProfile) onNavigateToProfile();
+            }}
+            className="p-4 bg-surface border-b border-gray-100 cursor-pointer hover:bg-gold/5 transition-colors group"
+          >
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gold/20 border-2 border-gold flex items-center justify-center text-forest-dark font-extrabold text-base sm:text-lg flex-shrink-0">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gold/20 border-2 border-gold flex items-center justify-center text-forest-dark font-extrabold text-base sm:text-lg flex-shrink-0 group-hover:scale-105 transition-transform">
                 {user?.first_name?.[0] || 'M'}
               </div>
               <div className="min-w-0 flex-1">
@@ -168,37 +178,18 @@ export default function SideDrawer({ isOpen, onClose, onOpenOrders, onOpenInvite
 
             {navLinks.map((item) => {
               const Icon = item.icon;
-
-              if (item.href) {
-                return (
-                  <a
-                    key={item.id}
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={onClose}
-                    className="flex items-center justify-between p-3 rounded-xl hover:bg-forest-subtle text-forest-dark transition-colors group"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 rounded-lg bg-forest/10 flex items-center justify-center text-forest group-hover:bg-forest group-hover:text-white transition-colors">
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-bold text-forest-dark">{item.label}</div>
-                        <div className="text-[10px] text-muted">{item.desc}</div>
-                      </div>
-                    </div>
-                    <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
-                  </a>
-                );
-              }
+              const isActive = activeView === item.id;
 
               if (item.special) {
                 return (
                   <button
                     key={item.id}
                     onClick={item.onClick}
-                    className="w-full flex items-center justify-between p-3 rounded-xl bg-gold/15 hover:bg-gold/25 border border-gold/40 text-forest-dark transition-colors group text-left my-2"
+                    className={`w-full flex items-center justify-between p-3 rounded-xl border text-forest-dark transition-colors group text-left my-2 ${
+                      isActive
+                        ? 'bg-gold text-forest-dark border-gold font-extrabold shadow-sm'
+                        : 'bg-gold/15 hover:bg-gold/25 border-gold/40'
+                    }`}
                   >
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 rounded-lg bg-gold text-forest-dark flex items-center justify-center font-bold shadow-xs">
@@ -218,18 +209,26 @@ export default function SideDrawer({ isOpen, onClose, onOpenOrders, onOpenInvite
                 <button
                   key={item.id}
                   onClick={item.onClick}
-                  className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-forest-subtle text-forest-dark transition-colors group text-left"
+                  className={`w-full flex items-center justify-between p-3 rounded-xl transition-colors group text-left ${
+                    isActive
+                      ? 'bg-forest text-white shadow-sm'
+                      : 'hover:bg-forest-subtle text-forest-dark'
+                  }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-lg bg-forest/10 flex items-center justify-center text-forest group-hover:bg-forest group-hover:text-white transition-colors">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                      isActive
+                        ? 'bg-white/20 text-gold'
+                        : 'bg-forest/10 text-forest group-hover:bg-forest group-hover:text-white'
+                    }`}>
                       <Icon className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-forest-dark">{item.label}</div>
-                      <div className="text-[10px] text-muted">{item.desc}</div>
+                      <div className={`text-xs font-bold ${isActive ? 'text-white' : 'text-forest-dark'}`}>{item.label}</div>
+                      <div className={`text-[10px] ${isActive ? 'text-gray-200' : 'text-muted'}`}>{item.desc}</div>
                     </div>
                   </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-forest transition-colors" />
+                  <ChevronRight className={`w-3.5 h-3.5 transition-colors ${isActive ? 'text-gold' : 'text-gray-400 group-hover:text-forest'}`} />
                 </button>
               );
             })}

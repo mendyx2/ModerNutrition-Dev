@@ -3,94 +3,79 @@ import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import {
   User, Award, Globe, LogOut, ShieldCheck,
-  LayoutDashboard, ShoppingBag, ClipboardList, Wallet, Users, UserPlus,
-  ExternalLink, Share2, Menu
+  LayoutDashboard, ShoppingBag, ClipboardList, Wallet, Users, GitMerge,
+  Menu, Share2
 } from 'lucide-react';
 
-export default function Header({ onOpenDrawer, onOpenOrders, onOpenInvite, onNavigateToShop }) {
+export default function Header({
+  activeView = 'dashboard',
+  onOpenDrawer,
+  onNavigateToDashboard,
+  onNavigateToShop,
+  onNavigateToOrders,
+  onNavigateToWallet,
+  onNavigateToTeam,
+  onNavigateToProfile
+}) {
   const { user, logout } = useAuth();
   const { i18n, t } = useTranslation();
-  const [activeTab, setActiveTab] = useState('dashboard');
 
   const changeLanguage = (lang) => {
     i18n.changeLanguage(lang);
     localStorage.setItem('mn_lang', lang);
   };
 
-  const publicShopUrl = window.location.origin.includes('localhost')
-    ? 'http://localhost:5173/catalogue.html'
-    : 'https://modernutrition-public.vercel.app/catalogue.html';
-
   const menuItems = [
     {
       id: 'dashboard',
       label: 'Dashboard',
       icon: LayoutDashboard,
-      onClick: () => {
-        setActiveTab('dashboard');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      },
+      onClick: onNavigateToDashboard,
     },
     {
       id: 'shop',
       label: 'Shop Products',
       icon: ShoppingBag,
-      onClick: () => {
-        setActiveTab('shop');
-        if (onNavigateToShop) onNavigateToShop();
-      },
+      onClick: onNavigateToShop,
     },
     {
       id: 'orders',
       label: 'My Orders',
       icon: ClipboardList,
-      onClick: () => {
-        setActiveTab('orders');
-        if (onOpenOrders) onOpenOrders();
-      },
+      onClick: onNavigateToOrders,
     },
     {
       id: 'wallet',
       label: 'My Wallet',
       icon: Wallet,
-      onClick: () => {
-        setActiveTab('wallet');
-        const el = document.getElementById('wallet-section');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      },
+      onClick: onNavigateToWallet,
     },
     {
       id: 'team',
       label: 'My Team',
-      icon: Users,
-      onClick: () => {
-        setActiveTab('team');
-        const el = document.getElementById('team-section');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      },
+      icon: GitMerge,
+      onClick: onNavigateToTeam,
     },
     {
-      id: 'invite',
-      label: 'Invite / Sponsor',
-      icon: UserPlus,
+      id: 'profile',
+      label: 'Profile & Sponsor',
+      icon: User,
       special: true,
-      onClick: () => {
-        if (onOpenInvite) onOpenInvite();
-      },
+      onClick: onNavigateToProfile,
     },
   ];
 
   return (
     <header className="bg-forest-dark text-white border-b-2 sm:border-b-4 border-gold sticky top-0 z-40 shadow-lg">
       
-      {/* ── Top Bar: Logo (Left) and Actions + Menu (Right) ── */}
+      {/* ── Top Bar: Logo (Left) and Navigation + Menu (Right) ── */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-20">
           
           {/* Left: Logo & Brand */}
           <div 
             className="flex items-center space-x-2 sm:space-x-3 cursor-pointer" 
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            onClick={onNavigateToDashboard}
           >
             <img 
               src="/assets/logo_header_landing_page.png" 
@@ -111,32 +96,20 @@ export default function Header({ onOpenDrawer, onOpenOrders, onOpenInvite, onNav
           <nav className="hidden lg:flex items-center space-x-1 bg-white/5 p-1.5 rounded-2xl border border-white/10">
             {menuItems.map((item) => {
               const Icon = item.icon;
-              const isActive = activeTab === item.id;
-
-              if (item.href) {
-                return (
-                  <a
-                    key={item.id}
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold text-gray-200 hover:text-white hover:bg-white/10 transition-all"
-                  >
-                    <Icon className="w-3.5 h-3.5 text-gold" />
-                    <span>{item.label}</span>
-                    <ExternalLink className="w-3 h-3 text-gray-400" />
-                  </a>
-                );
-              }
+              const isActive = activeView === item.id;
 
               if (item.special) {
                 return (
                   <button
                     key={item.id}
                     onClick={item.onClick}
-                    className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold bg-gold text-forest-dark hover:bg-gold-dark shadow-sm transition-all cursor-pointer"
+                    className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold shadow-sm transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-gold-dark text-white border border-white/40'
+                        : 'bg-gold text-forest-dark hover:bg-gold-dark'
+                    }`}
                   >
-                    <Icon className="w-3.5 h-3.5 text-forest-dark" />
+                    <Icon className="w-3.5 h-3.5" />
                     <span>{item.label}</span>
                   </button>
                 );
@@ -159,17 +132,17 @@ export default function Header({ onOpenDrawer, onOpenOrders, onOpenInvite, onNav
             })}
           </nav>
 
-          {/* Right Actions: Invite Button, Language Selector & Menu Button */}
+          {/* Right Actions: Profile Shortcut, Language & Menu Button */}
           <div className="flex items-center space-x-2 sm:space-x-3">
             
-            {/* Quick Invite Button */}
+            {/* Quick Profile / Sponsor Button */}
             <button
-              onClick={onOpenInvite}
+              onClick={onNavigateToProfile}
               className="flex items-center space-x-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-gold text-forest-dark font-extrabold text-[11px] sm:text-xs shadow-sm hover:bg-gold-dark active:scale-95 transition-all"
-              title="Share Referral Link"
+              title="My Profile & Sponsor Link"
             >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>Invite</span>
+              <User className="w-3.5 h-3.5" />
+              <span>Profile</span>
             </button>
 
             {/* Language Selector */}
@@ -202,7 +175,10 @@ export default function Header({ onOpenDrawer, onOpenOrders, onOpenInvite, onNav
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-4">
           
           {/* Member Name & Welcome */}
-          <div className="flex items-center space-x-2.5 sm:space-x-3">
+          <div 
+            className="flex items-center space-x-2.5 sm:space-x-3 cursor-pointer"
+            onClick={onNavigateToProfile}
+          >
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gold/20 border border-gold flex items-center justify-center text-gold font-extrabold text-sm sm:text-lg flex-shrink-0">
               {user?.first_name?.[0] || 'M'}
             </div>
