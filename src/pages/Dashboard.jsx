@@ -4,9 +4,10 @@ import CommerceThisMonth from '../components/CommerceThisMonth';
 import FiveRewardCards from '../components/FiveRewardCards';
 import AvailableBalance from '../components/AvailableBalance';
 import MyNextTarget from '../components/MyNextTarget';
-import QuickActions from '../components/QuickActions';
 import BinaryTeamView from '../components/BinaryTeamView';
 import WalletSection from '../components/WalletSection';
+import OrdersModal from '../components/OrdersModal';
+import InviteModal from '../components/InviteModal';
 import { useAuth } from '../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
@@ -14,6 +15,8 @@ import api from '../services/api';
 export default function Dashboard() {
   const { user } = useAuth();
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
+  const [ordersModalOpen, setOrdersModalOpen] = useState(false);
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
 
   // ── TanStack React Query: live dashboard summary ──
   const { data: dashboardData, isLoading } = useQuery({
@@ -73,8 +76,11 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-surface flex flex-col">
 
-      {/* ── 1. Welcome + Member Identity ── */}
-      <Header />
+      {/* ── 1. Header with Menu Bar & Member Identity ── */}
+      <Header
+        onOpenOrders={() => setOrdersModalOpen(true)}
+        onOpenInvite={() => setInviteModalOpen(true)}
+      />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
@@ -94,16 +100,30 @@ export default function Dashboard() {
         {/* ── 5. My Next Target ── */}
         <MyNextTarget data={rankData} />
 
-        {/* ── 6. Quick Actions ── */}
-        <QuickActions permissions={user?.permissions} />
+        {/* ── 6. Binary Team View ── */}
+        <div id="team-section" className="scroll-mt-32">
+          <BinaryTeamView data={teamData} />
+        </div>
 
-        {/* ── 7. Binary Team View ── */}
-        <BinaryTeamView data={teamData} />
-
-        {/* ── 8. Wallet Section ── */}
-        <WalletSection />
+        {/* ── 7. Wallet Section ── */}
+        <div id="wallet-section" className="scroll-mt-32">
+          <WalletSection />
+        </div>
 
       </main>
+
+      {/* ── Orders Modal ── */}
+      <OrdersModal
+        isOpen={ordersModalOpen}
+        onClose={() => setOrdersModalOpen(false)}
+      />
+
+      {/* ── Invite / Sponsor Modal ── */}
+      <InviteModal
+        isOpen={inviteModalOpen}
+        onClose={() => setInviteModalOpen(false)}
+        user={user}
+      />
 
       {/* ── Withdrawal Modal ── */}
       {withdrawalModalOpen && (

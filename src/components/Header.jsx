@@ -1,19 +1,88 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { User, Award, Globe, LogOut, ShieldCheck } from 'lucide-react';
+import {
+  User, Award, Globe, LogOut, ShieldCheck,
+  LayoutDashboard, ShoppingBag, ClipboardList, Wallet, Users, UserPlus,
+  ExternalLink, Menu, X
+} from 'lucide-react';
 
-export default function Header() {
+export default function Header({ onOpenOrders, onOpenInvite }) {
   const { user, logout } = useAuth();
   const { i18n, t } = useTranslation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   const changeLanguage = (lang) => {
     i18n.changeLanguage(lang);
     localStorage.setItem('mn_lang', lang);
   };
 
+  const publicShopUrl = window.location.origin.includes('localhost')
+    ? 'http://localhost:5173/catalogue.html'
+    : 'https://modernutrition-public.vercel.app/catalogue.html';
+
+  const menuItems = [
+    {
+      id: 'dashboard',
+      label: 'Dashboard',
+      icon: LayoutDashboard,
+      onClick: () => {
+        setActiveTab('dashboard');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      },
+    },
+    {
+      id: 'shop',
+      label: 'Shop Products',
+      icon: ShoppingBag,
+      href: publicShopUrl,
+      external: true,
+    },
+    {
+      id: 'orders',
+      label: 'My Orders',
+      icon: ClipboardList,
+      onClick: () => {
+        setActiveTab('orders');
+        if (onOpenOrders) onOpenOrders();
+      },
+    },
+    {
+      id: 'wallet',
+      label: 'My Wallet',
+      icon: Wallet,
+      onClick: () => {
+        setActiveTab('wallet');
+        const el = document.getElementById('wallet-section');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      },
+    },
+    {
+      id: 'team',
+      label: 'My Team',
+      icon: Users,
+      onClick: () => {
+        setActiveTab('team');
+        const el = document.getElementById('team-section');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      },
+    },
+    {
+      id: 'invite',
+      label: 'Invite / Sponsor',
+      icon: UserPlus,
+      special: true,
+      onClick: () => {
+        if (onOpenInvite) onOpenInvite();
+      },
+    },
+  ];
+
   return (
-    <header className="bg-forest-dark text-white border-b-4 border-gold sticky top-0 z-50 shadow-lg">
+    <header className="bg-forest-dark text-white border-b-4 border-gold sticky top-0 z-40 shadow-lg">
+      
+      {/* ── Top Bar: Logo, Menu Items & Account Actions ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
@@ -24,19 +93,76 @@ export default function Header() {
               alt="ModerNutrition Logo" 
               className="h-10 w-10 object-contain rounded-lg border border-gold bg-white p-0.5" 
             />
-            <span className="bg-gold text-forest-dark text-xs font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider hidden sm:inline-block">
-              Member Portal
-            </span>
+            <div>
+              <span className="font-heading font-extrabold text-base tracking-wide text-white block leading-tight">
+                Moder<span className="text-gold">N</span>utrition
+              </span>
+              <span className="bg-gold text-forest-dark text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider inline-block">
+                Member Portal
+              </span>
+            </div>
           </div>
 
+          {/* ── Desktop Navigation Menu Bar ── */}
+          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2 bg-white/5 p-1.5 rounded-2xl border border-white/10">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+
+              if (item.href) {
+                return (
+                  <a
+                    key={item.id}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold text-gray-200 hover:text-white hover:bg-white/10 transition-all"
+                  >
+                    <Icon className="w-3.5 h-3.5 text-gold" />
+                    <span>{item.label}</span>
+                    <ExternalLink className="w-3 h-3 text-gray-400" />
+                  </a>
+                );
+              }
+
+              if (item.special) {
+                return (
+                  <button
+                    key={item.id}
+                    onClick={item.onClick}
+                    className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold bg-gold text-forest-dark hover:bg-gold-dark shadow-sm transition-all cursor-pointer"
+                  >
+                    <Icon className="w-3.5 h-3.5 text-forest-dark" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              }
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={item.onClick}
+                  className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-forest-light text-white border border-gold/40 shadow-xs'
+                      : 'text-gray-200 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5 text-gold" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
           {/* User Identity & Lang Actions */}
-          <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-3 sm:space-x-4">
             
             {/* Language Selector */}
             <select
               value={i18n.language}
               onChange={(e) => changeLanguage(e.target.value)}
-              className="bg-forest-light text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/20 outline-none cursor-pointer hover:border-gold transition-colors"
+              className="bg-forest-light text-white text-xs font-bold px-2.5 py-1.5 rounded-full border border-white/20 outline-none cursor-pointer hover:border-gold transition-colors"
             >
               <option value="en">EN 🇬🇧</option>
               <option value="fr">FR 🇨🇩</option>
@@ -45,16 +171,93 @@ export default function Header() {
             {/* Logout Button */}
             <button
               onClick={logout}
-              className="flex items-center space-x-1.5 text-xs font-bold text-gray-300 hover:text-gold transition-colors"
+              className="hidden sm:flex items-center space-x-1.5 text-xs font-bold text-gray-300 hover:text-gold transition-colors"
               title="Logout"
             >
               <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('nav.logout')}</span>
+              <span>{t('nav.logout')}</span>
             </button>
+
+            {/* Mobile Menu Hamburger Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-xl bg-white/10 text-gray-200 hover:text-white"
+              aria-label="Toggle Menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+
           </div>
 
         </div>
       </div>
+
+      {/* ── Mobile Navigation Drawer ── */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-forest border-t border-white/10 p-4 space-y-2 animate-in slide-in-from-top-2 duration-200">
+          <div className="grid grid-cols-2 gap-2">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+
+              if (item.href) {
+                return (
+                  <a
+                    key={item.id}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center space-x-2 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-white border border-white/10"
+                  >
+                    <Icon className="w-4 h-4 text-gold" />
+                    <span>{item.label}</span>
+                  </a>
+                );
+              }
+
+              if (item.special) {
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      item.onClick();
+                    }}
+                    className="col-span-2 flex items-center justify-center space-x-2 p-2.5 rounded-xl bg-gold text-forest-dark font-extrabold text-xs shadow"
+                  >
+                    <Icon className="w-4 h-4 text-forest-dark" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              }
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    item.onClick();
+                  }}
+                  className="flex items-center space-x-2 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-white border border-white/10 text-left"
+                >
+                  <Icon className="w-4 h-4 text-gold" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="pt-2 border-t border-white/10 flex justify-end">
+            <button
+              onClick={logout}
+              className="flex items-center space-x-1.5 text-xs font-bold text-red-300 hover:text-red-100 py-1"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>{t('nav.logout')}</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Member Identity Banner (HIERARCHY ITEM 1) */}
       <div className="bg-forest border-t border-white/10 py-3.5 px-4 sm:px-6 lg:px-8">
