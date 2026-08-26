@@ -223,8 +223,8 @@ export default function MemberShop({ onBack }) {
           )}
         </div>
 
-        {/* Category Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+        {/* Category Pills (Responsive wrap - No scrolling required) */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {categories.map(cat => {
             const config = CATEGORY_CONFIG[cat] || { emoji: '📦', color: 'bg-gray-100 text-gray-700 border-gray-300' };
             const isActive = activeCategory === cat;
@@ -232,10 +232,10 @@ export default function MemberShop({ onBack }) {
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all flex-shrink-0 border ${
+                className={`flex items-center space-x-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold transition-all border ${
                   isActive
-                    ? 'bg-forest text-white border-forest shadow-sm scale-105'
-                    : `${config.color} hover:scale-105`
+                    ? 'bg-forest text-white border-forest shadow-xs scale-105'
+                    : `${config.color} hover:opacity-90`
                 }`}
               >
                 <span>{config.emoji}</span>
