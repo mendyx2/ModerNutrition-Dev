@@ -26,15 +26,20 @@ export default function Register({ onNavigateToLogin, onRegistered }) {
   const [guestCartItems, setGuestCartItems] = useState([]);
   const [orderTransferred, setOrderTransferred] = useState(false);
 
-  // 1. Capture sponsor code from URL query (?ref=) or localStorage
+  // 1. Capture sponsor code and placement leg from URL query (?ref= or ?sponsor=&leg=) or localStorage
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const refParam = urlParams.get('ref');
+    const refParam = urlParams.get('ref') || urlParams.get('sponsor');
+    const legParam = urlParams.get('leg');
     const storedRef = localStorage.getItem('mn_ref_code') || sessionStorage.getItem('mn_ref_code');
     const activeRef = refParam || storedRef || '';
 
-    if (activeRef) {
-      setFormData(prev => ({ ...prev, sponsor_code: activeRef }));
+    if (activeRef || legParam) {
+      setFormData(prev => ({
+        ...prev,
+        sponsor_code: activeRef || prev.sponsor_code,
+        placement_leg: (legParam === 'left' || legParam === 'right') ? legParam : prev.placement_leg,
+      }));
     }
 
     // 2. Check for guest cart in localStorage
