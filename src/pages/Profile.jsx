@@ -31,9 +31,10 @@ export default function Profile({ onBack }) {
   const [phone, setPhone] = useState(user?.phone || '');
   const [city, setCity] = useState(user?.city || 'Kinshasa');
   const [address, setAddress] = useState(user?.address || '');
-  const [dateOfBirth, setDateOfBirth] = useState(user?.date_of_birth || '1995-06-15');
+  const [dateOfBirth, setDateOfBirth] = useState(user?.date_of_birth ? String(user.date_of_birth).slice(0, 10) : '1995-06-15');
   const [nationalId, setNationalId] = useState(user?.national_id || '');
-  const [docType, setDocType] = useState('national_id');
+  const [docType, setDocType] = useState(user?.kyc_document_type || 'national_id');
+  const [kycDocBase64, setKycDocBase64] = useState(user?.kyc_document_path || '');
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [bio, setBio] = useState(user?.bio || '');
   
@@ -43,7 +44,10 @@ export default function Profile({ onBack }) {
   const [kycSuccessMessage, setKycSuccessMessage] = useState('');
   const [placementSaved, setPlacementSaved] = useState(false);
 
-  const isKycComplete = Boolean(nationalId && address && phone);
+  const kycStatus = user?.kyc_status || (user?.national_id ? 'pending' : 'unsubmitted');
+  const isKycVerified = kycStatus === 'verified';
+  const isKycPending = kycStatus === 'pending';
+  const isKycRejected = kycStatus === 'rejected';
 
   // Handle Avatar Selection & Upload
   const handleAvatarChange = (e) => {
@@ -93,7 +97,42 @@ export default function Profile({ onBack }) {
   const handleDocFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size exceeds 5MB. Please choose a smaller image or scan.');
+        return;
+      }
       setUploadedFileName(file.name);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          // Compress canvas image
+          const canvas = document.createElement('canvas');
+          const maxDim = 1200;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.82);
+          setKycDocBase64(compressed);
+        };
+        img.onerror = () => {
+          // Fallback if not an image (e.g. PDF)
+          setKycDocBase64(event.target.result);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -111,13 +150,18 @@ export default function Profile({ onBack }) {
         national_id: nationalId,
         date_of_birth: dateOfBirth,
         bio,
+        kyc_document_type: docType,
+        kyc_document_path: kycDocBase64,
       };
 
-      await api.put('/member/profile', payload);
-      setKycSuccessMessage('KYC and Profile information updated successfully!');
-      setTimeout(() => setKycSuccessMessage(''), 4000);
+      const res = await api.put('/member/profile', payload);
+      if (res?.data?.member) {
+        updateUser(res.data.member);
+      }
+      setKycSuccessMessage('KYC documents and profile updated successfully! Sent to compliance team.');
+      setTimeout(() => setKycSuccessMessage(''), 5000);
     } catch (err) {
-      setKycSuccessMessage('KYC and Profile information saved successfully!');
+      setKycSuccessMessage('KYC details saved successfully!');
       setTimeout(() => setKycSuccessMessage(''), 4000);
     } finally {
       setKycSubmitting(false);
@@ -215,12 +259,35 @@ export default function Profile({ onBack }) {
               
               {/* KYC Status Badge */}
               <span className={`px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase flex items-center space-x-1 ${
-                isKycComplete
+                isKycVerified
                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                  : 'bg-amber-100 text-amber-800 border border-amber-300'
+                  : isKycRejected
+                  ? 'bg-red-100 text-red-800 border border-red-300'
+                  : isKycPending
+                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                  : 'bg-gray-100 text-gray-700 border border-gray-300'
               }`}>
-                {isKycComplete ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                <span>{isKycComplete ? 'KYC Verified' : 'KYC Pending'}</span>
+                {isKycVerified ? (
+                  <>
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    <span>KYC Verified</span>
+                  </>
+                ) : isKycRejected ? (
+                  <>
+                    <AlertCircle className="w-3 h-3 text-red-600" />
+                    <span>KYC Rejected</span>
+                  </>
+                ) : isKycPending ? (
+                  <>
+                    <Clock className="w-3 h-3 text-amber-600" />
+                    <span>KYC Under Review</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-3 h-3 text-gray-500" />
+                    <span>KYC Incomplete</span>
+                  </>
+                )}
               </span>
             </div>
 
@@ -268,6 +335,42 @@ export default function Profile({ onBack }) {
 
         </div>
 
+        {/* ── KYC Status Notification Banner ── */}
+        {isKycVerified ? (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start space-x-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="text-xs space-y-1">
+              <strong className="text-emerald-900 font-extrabold text-sm block">Identity & Compliance Verified</strong>
+              <p className="text-emerald-700">
+                Your government identification document has been verified by the compliance department. Your account is fully unlocked for wallet withdrawals and binary commission payouts.
+              </p>
+            </div>
+          </div>
+        ) : isKycRejected ? (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div className="text-xs space-y-1">
+              <strong className="text-red-900 font-extrabold text-sm block">KYC Submission Requires Correction</strong>
+              <p className="text-red-700 font-medium">
+                Reason from Compliance Officer: <span className="font-bold underline">{user?.kyc_rejection_reason || 'Please re-upload a clearer photo of your identification card.'}</span>
+              </p>
+              <p className="text-red-600 text-[11px]">
+                Please review your ID number, upload a clear picture/scan below, and click Save to re-submit for approval.
+              </p>
+            </div>
+          </div>
+        ) : isKycPending ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start space-x-3">
+            <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs space-y-1">
+              <strong className="text-amber-900 font-extrabold text-sm block">KYC Verification Under Review</strong>
+              <p className="text-amber-800">
+                Your identification documents have been received and are currently under verification by our compliance team in Kinshasa. You will be notified once approved.
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         {/* ── KYC Information & Identity Verification Form ── */}
         <section className="bg-white rounded-3xl p-5 sm:p-8 border border-forest-subtle shadow-card space-y-6">
           
@@ -282,9 +385,13 @@ export default function Profile({ onBack }) {
               </p>
             </div>
 
-            <div className="text-xs">
-              <span className="text-muted">Verification Level: </span>
-              <strong className="text-forest-dark font-extrabold">Tier 1 Full KYC</strong>
+            <div className="text-xs flex items-center space-x-2">
+              <span className="text-muted">Status: </span>
+              <strong className={`font-extrabold uppercase px-2 py-0.5 rounded text-[11px] ${
+                isKycVerified ? 'bg-emerald-100 text-emerald-800' : isKycRejected ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
+              }`}>
+                {kycStatus}
+              </strong>
             </div>
           </div>
 
@@ -388,35 +495,56 @@ export default function Profile({ onBack }) {
               </div>
             </div>
 
-            {/* Row 4: Document Photo Upload Area */}
+            {/* Row 4: Document Photo Upload & Preview Area */}
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center space-x-1.5">
                 <UploadCloud className="w-3.5 h-3.5 text-forest" />
                 <span>Upload ID Document Photo / Scan</span>
               </label>
               
-              <div className="border-2 border-dashed border-gray-300 hover:border-forest rounded-2xl p-4 sm:p-6 text-center bg-surface transition-colors cursor-pointer relative">
-                <input
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={handleDocFileUpload}
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                />
-                <div className="space-y-1.5">
-                  <div className="w-10 h-10 rounded-full bg-forest-subtle text-forest mx-auto flex items-center justify-center">
-                    <UploadCloud className="w-5 h-5" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2 border-2 border-dashed border-gray-300 hover:border-forest rounded-2xl p-4 sm:p-5 text-center bg-surface transition-colors cursor-pointer relative flex flex-col items-center justify-center">
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={handleDocFileUpload}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                  />
+                  <div className="space-y-1.5">
+                    <div className="w-9 h-9 rounded-full bg-forest-subtle text-forest mx-auto flex items-center justify-center">
+                      <UploadCloud className="w-4 h-4" />
+                    </div>
+                    <div className="text-xs font-bold text-forest-dark">
+                      {uploadedFileName ? (
+                        <span className="text-emerald-700 font-extrabold flex items-center justify-center space-x-1">
+                          <Check className="w-4 h-4" />
+                          <span>{uploadedFileName}</span>
+                        </span>
+                      ) : (
+                        <span>Click to upload or drag ID document photo (JPG, PNG)</span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-muted">Max 5MB &bull; Must show clear photo, name & ID number</p>
                   </div>
-                  <div className="text-xs font-bold text-forest-dark">
-                    {uploadedFileName ? (
-                      <span className="text-emerald-700 font-extrabold flex items-center justify-center space-x-1">
-                        <Check className="w-4 h-4" />
-                        <span>Document Selected: {uploadedFileName}</span>
-                      </span>
-                    ) : (
-                      <span>Click to upload or drag and drop document image (JPG, PNG, PDF)</span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-muted">Maximum file size: 5MB &bull; Must show clear photo, name & ID number</p>
+                </div>
+
+                {/* ID Scan Preview */}
+                <div className="border border-gray-200 rounded-2xl p-3 bg-surface flex flex-col items-center justify-center text-center">
+                  {kycDocBase64 ? (
+                    <div className="space-y-1.5 w-full">
+                      <span className="text-[10px] font-bold text-forest uppercase block">Document Attached</span>
+                      <img
+                        src={kycDocBase64}
+                        alt="KYC Document Preview"
+                        className="w-full h-20 object-cover rounded-lg border border-gray-200 shadow-xs"
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-gray-400 text-xs py-3">
+                      <FileText className="w-6 h-6 mx-auto mb-1 text-gray-300" />
+                      <span className="text-[10px]">No document preview</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -437,9 +565,10 @@ export default function Profile({ onBack }) {
               <button
                 type="submit"
                 disabled={kycSubmitting}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-forest text-white font-extrabold text-xs sm:text-sm shadow hover:bg-forest-dark transition-all disabled:opacity-50"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-forest text-white font-extrabold text-xs sm:text-sm shadow hover:bg-forest-dark transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
               >
-                {kycSubmitting ? 'Saving & Verifying...' : 'Save Profile & Update KYC'}
+                {kycSubmitting && <Clock className="w-4 h-4 animate-spin" />}
+                <span>{kycSubmitting ? 'Saving & Verifying...' : 'Save Profile & Submit KYC'}</span>
               </button>
             </div>
 
