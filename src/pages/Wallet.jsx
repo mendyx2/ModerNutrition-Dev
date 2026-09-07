@@ -1,20 +1,32 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import {
   Wallet as WalletIcon, ArrowLeft, ArrowDownLeft, ArrowUpRight,
   Clock, RotateCcw, ChevronLeft, ChevronRight, DollarSign,
-  ShieldCheck, AlertCircle, Percent, Award, Users, Check, X
+  ShieldCheck, AlertCircle, Percent, Award, Users, Check, X,
+  Smartphone, Building2, User, AlertTriangle
 } from 'lucide-react';
 
 export default function Wallet({ onBack }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
   const [activeCategory, setActiveCategory] = useState('all');
   const [txPage, setTxPage] = useState(1);
+  
+  // Withdrawal Form State
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
-  const [withdrawAmount, setWithdrawAmount] = useState('100.00');
+  const [withdrawAmount, setWithdrawAmount] = useState('50.00');
   const [withdrawCategory, setWithdrawCategory] = useState('member_reward');
   const [payoutMethod, setPayoutMethod] = useState('Airtel Money (DRC)');
-  const [withdrawSuccess, setWithdrawSuccess] = useState(false);
+  const [accountNumber, setAccountNumber] = useState(user?.phone || '');
+  const [accountName, setAccountName] = useState(user?.first_name ? `${user.first_name} ${user.last_name}` : '');
+  
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successData, setSuccessData] = useState(null);
 
   // 1. Fetch Wallets Summary
   const { data: walletData, isLoading: walletLoading } = useQuery({
@@ -58,14 +70,63 @@ export default function Wallet({ onBack }) {
     { key: 'matching_bonus', label: 'Matching Bonus (6%)', icon: Award },
   ];
 
-  const handleWithdrawalSubmit = (e) => {
+  // Selected Category Balance
+  const selectedWallet = wallets.find(w => w.bucket === withdrawCategory) || wallets[0];
+  const availableForSelected = (selectedWallet?.withdrawable_cents || 0) / 100;
+
+  const handleWithdrawalSubmit = async (e) => {
     e.preventDefault();
-    setWithdrawSuccess(true);
-    setTimeout(() => {
-      setWithdrawSuccess(false);
-      setWithdrawalModalOpen(false);
-    }, 2500);
+    setErrorMessage('');
+    const amt = parseFloat(withdrawAmount);
+
+    if (isNaN(amt) || amt < 10) {
+      setErrorMessage('Minimum withdrawal amount is $10.00 USD.');
+      return;
+    }
+
+    if (amt > availableForSelected && availableForSelected > 0) {
+      setErrorMessage(`Insufficient available balance ($${availableForSelected.toFixed(2)}) in ${selectedWallet?.label || 'selected pool'}.`);
+      return;
+    }
+
+    if (!accountNumber.trim()) {
+      setErrorMessage('Please enter the recipient phone number or account number.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        amount: amt,
+        wallet_bucket: withdrawCategory,
+        payment_method: payoutMethod,
+        payment_details: {
+          account_number: accountNumber.trim(),
+          account_name: accountName.trim() || `${user?.first_name || 'Member'} ${user?.last_name || ''}`.trim(),
+          payment_channel: payoutMethod,
+          country: user?.country || 'COD',
+        }
+      };
+
+      const res = await api.post('/member/withdrawals', payload);
+      setSuccessData(res.data?.withdrawal || {
+        withdrawal_number: 'WD-' + Math.floor(100000 + Math.random() * 900000),
+        amount: amt,
+        payment_method: payoutMethod
+      });
+
+      // Invalidate queries so available and pending balances refresh
+      queryClient.invalidateQueries(['memberWalletsFull']);
+      queryClient.invalidateQueries(['memberTransactionsFull']);
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Failed to submit withdrawal request.';
+      setErrorMessage(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const isKycVerified = user?.kyc_status === 'verified';
 
   return (
     <div className="min-h-screen bg-surface flex flex-col antialiased">
@@ -93,7 +154,11 @@ export default function Wallet({ onBack }) {
             </div>
 
             <button
-              onClick={() => setWithdrawalModalOpen(true)}
+              onClick={() => {
+                setSuccessData(null);
+                setErrorMessage('');
+                setWithdrawalModalOpen(true);
+              }}
               className="flex items-center space-x-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-gold text-forest-dark font-extrabold text-xs sm:text-sm shadow hover:bg-gold-dark active:scale-95 transition-all"
             >
               <ArrowDownLeft className="w-4 h-4" />
@@ -112,17 +177,22 @@ export default function Wallet({ onBack }) {
           <div className="bg-white p-5 rounded-2xl border border-forest-subtle shadow-card flex flex-col justify-between">
             <div>
               <span className="text-[10px] sm:text-xs font-bold text-muted uppercase tracking-wider block mb-1">Withdrawable Balance</span>
-              <div className="text-2xl sm:text-3xl font-extrabold text-forest-dark">
-                ${((summary?.withdrawable_cents || 15900) / 100).toFixed(2)}
+              <div className="text-2xl sm:text-3xl font-extrabold text-forest-dark font-heading">
+                ${((summary?.withdrawable_cents || 0) / 100).toFixed(2)}
               </div>
             </div>
             <div className="mt-3 flex items-center justify-between pt-3 border-t border-gray-100">
               <span className="text-[11px] text-forest font-semibold">Available for payout</span>
               <button
-                onClick={() => setWithdrawalModalOpen(true)}
-                className="text-xs font-extrabold text-gold-dark hover:underline"
+                onClick={() => {
+                  setSuccessData(null);
+                  setErrorMessage('');
+                  setWithdrawalModalOpen(true);
+                }}
+                className="text-xs font-extrabold text-gold-dark hover:underline flex items-center gap-1"
               >
-                Withdraw &rarr;
+                <span>Withdraw</span>
+                <span>&rarr;</span>
               </button>
             </div>
           </div>
@@ -130,24 +200,24 @@ export default function Wallet({ onBack }) {
           <div className="bg-white p-5 rounded-2xl border border-forest-subtle shadow-card flex flex-col justify-between">
             <div>
               <span className="text-[10px] sm:text-xs font-bold text-muted uppercase tracking-wider block mb-1">Total Lifetime Earnings</span>
-              <div className="text-2xl sm:text-3xl font-extrabold text-forest">
-                ${((summary?.total_earned_cents || 17100) / 100).toFixed(2)}
+              <div className="text-2xl sm:text-3xl font-extrabold text-forest font-heading">
+                ${((summary?.total_earned_cents || 0) / 100).toFixed(2)}
               </div>
             </div>
             <div className="mt-3 pt-3 border-t border-gray-100 text-[11px] text-muted">
-              Cumulative rewards from all 5 pools
+              Cumulative rewards from all 5 bonus pools
             </div>
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-forest-subtle shadow-card flex flex-col justify-between">
             <div>
-              <span className="text-[10px] sm:text-xs font-bold text-muted uppercase tracking-wider block mb-1">Pending Balance</span>
-              <div className="text-2xl sm:text-3xl font-extrabold text-gold-dark">
-                ${((summary?.pending_cents || 1200) / 100).toFixed(2)}
+              <span className="text-[10px] sm:text-xs font-bold text-muted uppercase tracking-wider block mb-1">Pending Balance Hold</span>
+              <div className="text-2xl sm:text-3xl font-extrabold text-gold-dark font-heading">
+                ${((summary?.pending_cents || 0) / 100).toFixed(2)}
               </div>
             </div>
             <div className="mt-3 pt-3 border-t border-gray-100 text-[11px] text-muted">
-              In maker-checker settlement queue
+              In maker-checker settlement & review queue
             </div>
           </div>
         </div>
@@ -290,8 +360,8 @@ export default function Wallet({ onBack }) {
 
       {/* ── Withdrawal Modal (Bottom Sheet on Mobile) ── */}
       {withdrawalModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full border border-forest-subtle shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full border border-forest-subtle shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
             
             <div className="sm:hidden pt-2.5 pb-1 flex justify-center bg-forest-dark">
               <div className="w-10 h-1 rounded-full bg-white/30" />
@@ -310,40 +380,66 @@ export default function Wallet({ onBack }) {
               </button>
             </div>
 
-            {withdrawSuccess ? (
-              <div className="p-8 text-center space-y-3">
+            {successData ? (
+              <div className="p-6 sm:p-8 text-center space-y-4">
                 <div className="w-14 h-14 rounded-full bg-emerald-100 mx-auto flex items-center justify-center">
                   <Check className="w-8 h-8 text-emerald-600" />
                 </div>
-                <h4 className="text-base font-extrabold text-forest-dark">Withdrawal Request Submitted</h4>
-                <p className="text-xs text-muted">
-                  Your request for ${withdrawAmount} via {payoutMethod} has been submitted for Maker-Checker administrative review.
-                </p>
+                <div>
+                  <span className="font-mono text-xs font-bold text-forest bg-forest-subtle px-2.5 py-1 rounded-md">
+                    #{successData.withdrawal_number}
+                  </span>
+                  <h4 className="text-base sm:text-lg font-extrabold text-forest-dark mt-2">Withdrawal Request Submitted</h4>
+                  <p className="text-xs text-muted mt-1">
+                    Your payout request of <strong className="text-forest-dark">${parseFloat(successData.amount).toFixed(2)} USD</strong> via {successData.payment_method} has been received and queued for maker-checker review.
+                  </p>
+                </div>
+
+                <div className="bg-surface p-3 rounded-xl border border-gray-200 text-left text-xs space-y-1">
+                  <div className="flex justify-between text-muted">
+                    <span>Target Channel:</span>
+                    <strong className="text-forest-dark">{successData.payment_method}</strong>
+                  </div>
+                  <div className="flex justify-between text-muted">
+                    <span>Review Status:</span>
+                    <strong className="text-amber-700 uppercase font-bold">Pending Maker-Checker Signoff</strong>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setWithdrawalModalOpen(false)}
+                  className="w-full py-2.5 bg-forest text-white font-extrabold text-xs rounded-xl hover:bg-forest-dark"
+                >
+                  Close & View Wallets
+                </button>
               </div>
             ) : (
-              <form onSubmit={handleWithdrawalSubmit} className="p-4 sm:p-6 space-y-4 bg-surface">
+              <form onSubmit={handleWithdrawalSubmit} className="p-4 sm:p-6 space-y-4 bg-surface max-h-[80vh] overflow-y-auto">
+                
+                {/* Maker-checker notice */}
                 <div className="bg-gold/10 p-3 rounded-xl border border-gold/30 text-[11px] text-gold-dark flex items-start space-x-2">
                   <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                   <span>
-                    Server-side Maker-Checker enforcement: Payout requests require approval from a distinct platform administrator before funds release.
+                    Maker-Checker Compliance: Payouts undergo dual administrative verification before mobile money disbursement.
                   </span>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Withdrawal Amount (USD)</label>
-                  <input
-                    type="number"
-                    value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(e.target.value)}
-                    step="0.01"
-                    min="10.00"
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 font-bold text-forest-dark text-sm focus:ring-2 focus:ring-forest outline-none bg-white"
-                  />
-                </div>
+                {/* Error Banner */}
+                {errorMessage && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-xs flex items-start space-x-2">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-600" />
+                    <span>{errorMessage}</span>
+                  </div>
+                )}
 
+                {/* Source Pool & Available Balance */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Source Wallet</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-bold text-gray-700">Source Reward Pool</label>
+                    <span className="text-[11px] font-bold text-forest">
+                      Available: ${availableForSelected.toFixed(2)} USD
+                    </span>
+                  </div>
                   <select
                     value={withdrawCategory}
                     onChange={(e) => setWithdrawCategory(e.target.value)}
@@ -357,6 +453,26 @@ export default function Wallet({ onBack }) {
                   </select>
                 </div>
 
+                {/* Amount */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Withdrawal Amount (USD)</label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-2.5 text-xs font-bold text-muted">$</span>
+                    <input
+                      type="number"
+                      value={withdrawAmount}
+                      onChange={(e) => setWithdrawAmount(e.target.value)}
+                      step="0.01"
+                      min="10.00"
+                      max={availableForSelected > 0 ? availableForSelected : undefined}
+                      required
+                      className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-gray-300 font-bold text-forest-dark text-sm focus:ring-2 focus:ring-forest outline-none bg-white font-mono"
+                    />
+                  </div>
+                  <span className="text-[10px] text-muted mt-1 block">Minimum withdrawal: $10.00 USD</span>
+                </div>
+
+                {/* Payout Channel */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Payout Channel</label>
                   <select
@@ -371,7 +487,41 @@ export default function Wallet({ onBack }) {
                   </select>
                 </div>
 
-                <div className="pt-2 flex items-center justify-end space-x-3">
+                {/* Account / Phone details */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center space-x-1">
+                      <Smartphone className="w-3.5 h-3.5 text-forest" />
+                      <span>Phone / Account Number</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={accountNumber}
+                      onChange={(e) => setAccountNumber(e.target.value)}
+                      placeholder="+243 81 234 5678"
+                      required
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 font-bold text-forest-dark text-xs sm:text-sm focus:ring-2 focus:ring-forest outline-none bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center space-x-1">
+                      <User className="w-3.5 h-3.5 text-forest" />
+                      <span>Account Holder Name</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={accountName}
+                      onChange={(e) => setAccountName(e.target.value)}
+                      placeholder="e.g. Jean-Luc Kabongo"
+                      required
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 font-bold text-forest-dark text-xs sm:text-sm focus:ring-2 focus:ring-forest outline-none bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Submit Action */}
+                <div className="pt-3 border-t border-gray-200 flex items-center justify-end space-x-3">
                   <button
                     type="button"
                     onClick={() => setWithdrawalModalOpen(false)}
@@ -381,9 +531,11 @@ export default function Wallet({ onBack }) {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 text-xs font-extrabold bg-gold text-forest-dark rounded-xl shadow hover:bg-gold-dark transition-colors"
+                    disabled={submitting}
+                    className="px-5 py-2.5 text-xs font-extrabold bg-gold text-forest-dark rounded-xl shadow hover:bg-gold-dark transition-colors disabled:opacity-50 flex items-center space-x-1.5"
                   >
-                    Submit Request
+                    {submitting && <Clock className="w-3.5 h-3.5 animate-spin" />}
+                    <span>{submitting ? 'Submitting...' : 'Submit Payout Request'}</span>
                   </button>
                 </div>
               </form>
